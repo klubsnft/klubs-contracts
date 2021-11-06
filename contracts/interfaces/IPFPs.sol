@@ -2,7 +2,7 @@ pragma solidity ^0.5.6;
 
 interface IPFPs {
 
-    event AddPFP(
+    event SetPFP(
         address addr,
         address manager,
         bool mintable,
@@ -20,10 +20,12 @@ interface IPFPs {
     );
 
     function passed(address addr) external returns (bool);
-    function addPFP(
+    function setPFP(
         address addr,
         bool mintable,
         bool enumerable,
         uint256 totalSupply
     ) external;
+
+    function getTotalSupply(address addr) view external returns (uint256);
 }

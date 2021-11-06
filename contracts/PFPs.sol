@@ -22,19 +22,19 @@ contract PFPs is Ownable, IPFPs {
         return pfpAddrs.length;
     }
 
-    function addPFP(
+    function setPFP(
         address addr,
         bool mintable,
         bool enumerable,
-        uint256 _totalSupply
+        uint256 totalSupply
     ) external {
+        require(msg.sender == owner());
 
-        uint256 totalSupply;
-        if (enumerable == true) {
-            totalSupply = IKIP17Enumerable(addr).totalSupply();
-        } else {
-            totalSupply = _totalSupply;
-        }
+        address manager = pfps[addr].manager;
+        require(
+            manager == address(0) ||
+            manager == msg.sender
+        );
 
         pfps[addr] = PFP({
             manager: msg.sender,
@@ -50,7 +50,16 @@ contract PFPs is Ownable, IPFPs {
             }
         }
 
-        emit AddPFP(addr, msg.sender, mintable, enumerable, totalSupply);
+        emit SetPFP(addr, msg.sender, mintable, enumerable, totalSupply);
+    }
+
+    function getTotalSupply(address addr) view external returns (uint256) {
+        PFP memory pfp = pfps[addr];
+        if (pfp.enumerable == true) {
+            return IKIP17Enumerable(addr).totalSupply();
+        } else {
+            return pfp.totalSupply;
+        }
     }
 
     function pass(address addr) onlyOwner external {
