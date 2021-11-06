@@ -1,75 +1,134 @@
 pragma solidity ^0.5.6;
 
 import "./klaytn-contracts/ownership/Ownable.sol";
+import "./klaytn-contracts/math/SafeMath.sol";
 import "./klaytn-contracts/token/KIP17/IKIP17.sol";
 import "./klaytn-contracts/token/KIP17/KIP17Mintable.sol";
 import "./klaytn-contracts/token/KIP17/IKIP17Enumerable.sol";
 import "./interfaces/IPFPs.sol";
 
 contract PFPs is Ownable, IPFPs {
+    using SafeMath for uint256;
 
-    struct PFP {
+    struct Proposal {
+        address addr;
         address manager;
-        bool mintable;
-        bool enumerable;
-        uint256 totalSupply;
     }
-    address[] public pfpAddrs;
-    mapping(address => PFP) public pfps;
-    mapping(address => bool) public passed;
+    Proposal[] public proposals;
 
-    function pfpAddrCount() external returns (uint256) {
-        return pfpAddrs.length;
+    function propose(address addr) external {
+        proposals.push(Proposal({
+            addr: addr,
+            manager: msg.sender
+        }));
+        emit Propose(addr, msg.sender);
     }
 
-    function setPFP(
-        address addr,
-        bool mintable,
-        bool enumerable,
-        uint256 totalSupply
-    ) external {
+    function proposalCount() view external returns (uint256) {
+        return proposals.length;
+    }
 
-        address manager = pfps[addr].manager;
-        require(
-            msg.sender == owner() ||
-            manager == address(0) ||
-            manager == msg.sender
-        );
+    address[] public addrs;
+    mapping(address => bool) public added;
+    mapping(address => address[]) public managers;
+    mapping(address => mapping(address => uint256)) public managersIndex;
 
-        pfps[addr] = PFP({
-            manager: msg.sender,
-            mintable: mintable,
-            enumerable: enumerable,
-            totalSupply: totalSupply
-        });
+    function addrCount() view external returns (uint256) {
+        return addrs.length;
+    }
 
-        if (mintable == true && KIP17Mintable(addr).isMinter(msg.sender) == true) {
-            passed[addr] = true;
-            if (pfps[addr].manager == address(0)) {
-                pfpAddrs.push(addr);
-            }
+    function managerCount(address addr) view external returns (uint256) {
+        return managers[addr].length;
+    }
+
+    function add(address addr, address manager) private {
+        require(added[addr] != true);
+        managers[addr].push(manager);
+        added[addr] = true;
+        emit Add(addr, manager);
+    }
+
+    function addByOwner(address addr, address manager) onlyOwner public {
+        add(addr, manager);
+    }
+
+    function addByPFPOwner(address addr) external {
+        require(Ownable(addr).owner() == msg.sender);
+        add(addr, msg.sender);
+    }
+
+    function addByMinter(address addr) external {
+        require(KIP17Mintable(addr).isMinter(msg.sender) == true);
+        add(addr, msg.sender);
+    }
+
+    function passProposal(uint256 proposalId) onlyOwner external {
+        Proposal memory proposal = proposals[proposalId];
+        add(proposal.addr, proposal.manager);
+    }
+
+    function existsManager(address addr, address manager) view public returns (bool) {
+        return managers[addr][managersIndex[addr][manager]] == manager;
+    }
+
+    modifier onlyManager(address addr) {
+        require(isOwner() == true || existsManager(addr, msg.sender) == true);
+        _;
+    }
+
+    function addManager(address addr, address manager) onlyManager(addr) external {
+        require(existsManager(addr, msg.sender) != true);
+        managersIndex[addr][manager] = managers[addr].length;
+        managers[addr].push(manager);
+        emit AddManager(addr, manager);
+    }
+
+    function removeManager(address addr, address manager) onlyManager(addr) external {
+        require(manager != msg.sender && existsManager(addr, msg.sender) == true);
+        uint256 lastIndex = managers[addr].length.sub(1);
+        uint256 index = managersIndex[addr][manager];
+        if (index != lastIndex) {
+            address last = managers[addr][lastIndex];
+            managers[addr][index] = last;
+            managersIndex[addr][last] = index;
         }
+        managers[addr].length--;
+        emit RemoveManager(addr, manager);
+    }
 
-        emit SetPFP(addr, msg.sender, mintable, enumerable, totalSupply);
+    mapping(address => bool) public enumerables;
+    mapping(address => uint256) public totalSupplies;
+
+    function setEnumerable(address addr, bool enumerable) onlyManager(addr) external {
+        enumerables[addr] = enumerable;
+        emit SetEnumerable(addr, enumerable);
+    }
+
+    function setTotalSupply(address addr, uint256 totalSupply) onlyManager(addr) external {
+        totalSupplies[addr] = totalSupply;
+        emit SetTotalSupply(addr, totalSupply);
     }
 
     function getTotalSupply(address addr) view external returns (uint256) {
-        PFP memory pfp = pfps[addr];
-        if (pfp.enumerable == true) {
+        if (enumerables[addr] == true) {
             return IKIP17Enumerable(addr).totalSupply();
         } else {
-            return pfp.totalSupply;
+            return totalSupplies[addr];
         }
     }
+    
+    mapping(address => uint256) public royalties;
 
-    function pass(address addr) onlyOwner external {
-        passed[addr] = true;
-        if (pfps[addr].manager == address(0)) {
-            pfpAddrs.push(addr);
-        }
+    function setRoyalty(address addr, uint256 royalty) onlyManager(addr) external {
+        require(royalty <= 1e3); // max royalty is 10%
+        royalties[addr] = royalty;
+        emit SetRoyalty(addr, royalty);
     }
+    
+    mapping(address => string) public extras;
 
-    function unpass(address addr) onlyOwner external {
-        passed[addr] = false;
+    function setExtra(address addr, string calldata extra) onlyManager(addr) external {
+        extras[addr] = extra;
+        emit SetExtra(addr, extra);
     }
 }

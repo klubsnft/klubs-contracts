@@ -2,30 +2,42 @@ pragma solidity ^0.5.6;
 
 interface IPFPs {
 
-    event SetPFP(
-        address addr,
-        address manager,
-        bool mintable,
-        bool enumerable,
-        uint256 totalSupply
-    );
+    event Propose(address indexed addr, address indexed manager);
+    event Add(address indexed addr, address indexed manager);
 
-    function pfpAddrs(uint256 index) external returns (address);
-    function pfpAddrCount() external returns (uint256);
-    function pfps(address addr) external returns (
-        address manager,
-        bool mintable,
-        bool enumerable,
-        uint256 totalSupply
-    );
+    event AddManager(address indexed addr, address indexed manager);
+    event RemoveManager(address indexed addr, address indexed manager);
 
-    function passed(address addr) external returns (bool);
-    function setPFP(
-        address addr,
-        bool mintable,
-        bool enumerable,
-        uint256 totalSupply
-    ) external;
+    event SetEnumerable(address indexed addr, bool enumerable);
+    event SetTotalSupply(address indexed addr, uint256 totalSupply);
 
+    event SetRoyalty(address indexed addr, uint256 royalty);
+    event SetExtra(address indexed addr, string extra);
+
+    function propose(address addr) external;
+
+    function addrCount() view external returns (uint256);
+    function addrs(uint256 index) view external returns (address);
+
+    function managerCount(address addr) view external returns (uint256);
+    function managers(address addr, uint256 index) view external returns (address);
+
+    function addByPFPOwner(address addr) external;
+    function addByMinter(address addr) external;
+
+    function existsManager(address addr, address manager) view external returns (bool);
+    function addManager(address addr, address manager) external;
+    function removeManager(address addr, address manager) external;
+
+    function enumerables(address addr) view external returns (bool);
+    function setEnumerable(address addr, bool enumerable) external;
+    function totalSupplies(address addr) view external returns (uint256);
+    function setTotalSupply(address addr, uint256 totalSupply) external;
     function getTotalSupply(address addr) view external returns (uint256);
+
+    function royalties(address addr) view external returns (uint256);
+    function setRoyalty(address addr, uint256 royalty) external;
+
+    function extras(address addr) view external returns (string memory);
+    function setExtra(address addr, string calldata extra) external;
 }
