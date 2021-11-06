@@ -28,10 +28,10 @@ contract PFPs is Ownable, IPFPs {
         bool enumerable,
         uint256 totalSupply
     ) external {
-        require(msg.sender == owner());
 
         address manager = pfps[addr].manager;
         require(
+            msg.sender == owner() ||
             manager == address(0) ||
             manager == msg.sender
         );
