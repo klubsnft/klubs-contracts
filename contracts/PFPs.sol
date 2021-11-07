@@ -131,4 +131,16 @@ contract PFPs is Ownable, IPFPs {
         extras[addr] = extra;
         emit SetExtra(addr, extra);
     }
+
+    mapping(address => bool) public banned;
+
+    function ban(address addr) onlyOwner external {
+        banned[addr] = true;
+        emit Ban(addr);
+    }
+
+    function unban(address addr) onlyOwner external {
+        banned[addr] = false;
+        emit Unban(addr);
+    }
 }

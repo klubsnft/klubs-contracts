@@ -14,6 +14,9 @@ interface IPFPs {
     event SetRoyalty(address indexed addr, uint256 royalty);
     event SetExtra(address indexed addr, string extra);
 
+    event Ban(address indexed addr);
+    event Unban(address indexed addr);
+
     function propose(address addr) external;
 
     function addrCount() view external returns (uint256);
