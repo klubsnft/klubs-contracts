@@ -973,8 +973,9 @@ contract PFPs is Ownable, IPFPs {
 
     function add(address addr, address manager) private {
         require(added[addr] != true);
-        managers[addr].push(manager);
+        addrs.push(addr);
         added[addr] = true;
+        managers[addr].push(manager);
         emit Add(addr, manager);
     }
 
