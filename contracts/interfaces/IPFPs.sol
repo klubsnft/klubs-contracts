@@ -44,4 +44,6 @@ interface IPFPs {
 
     function extras(address addr) view external returns (string memory);
     function setExtra(address addr, string calldata extra) external;
+
+    function banned(address addr) view external returns (bool);
 }
