@@ -77,14 +77,14 @@ contract PFPs is Ownable, IPFPs {
     }
 
     function addManager(address addr, address manager) onlyManager(addr) external {
-        require(existsManager(addr, msg.sender) != true);
+        require(existsManager(addr, manager) != true);
         managersIndex[addr][manager] = managers[addr].length;
         managers[addr].push(manager);
         emit AddManager(addr, manager);
     }
 
     function removeManager(address addr, address manager) onlyManager(addr) external {
-        require(manager != msg.sender && existsManager(addr, msg.sender) == true);
+        require(manager != msg.sender && existsManager(addr, manager) == true);
         uint256 lastIndex = managers[addr].length.sub(1);
         uint256 index = managersIndex[addr][manager];
         if (index != lastIndex) {
@@ -116,13 +116,20 @@ contract PFPs is Ownable, IPFPs {
             return totalSupplies[addr];
         }
     }
-    
-    mapping(address => uint256) public royalties;
 
-    function setRoyalty(address addr, uint256 royalty) onlyManager(addr) external {
+    struct RoyaltyInfo {
+        address receiver;
+        uint256 royalty;
+    }
+    mapping(address => RoyaltyInfo) public royalties;
+
+    function setRoyalty(address addr, address receiver, uint256 royalty) onlyManager(addr) external {
         require(royalty <= 1e3); // max royalty is 10%
-        royalties[addr] = royalty;
-        emit SetRoyalty(addr, royalty);
+        royalties[addr] = RoyaltyInfo({
+            receiver: receiver,
+            royalty: royalty
+        });
+        emit SetRoyalty(addr, receiver, royalty);
     }
     
     mapping(address => string) public extras;

@@ -11,7 +11,7 @@ interface IPFPs {
     event SetEnumerable(address indexed addr, bool enumerable);
     event SetTotalSupply(address indexed addr, uint256 totalSupply);
 
-    event SetRoyalty(address indexed addr, uint256 royalty);
+    event SetRoyalty(address indexed addr, address receiver, uint256 royalty);
     event SetExtra(address indexed addr, string extra);
 
     event Ban(address indexed addr);
@@ -38,8 +38,8 @@ interface IPFPs {
     function setTotalSupply(address addr, uint256 totalSupply) external;
     function getTotalSupply(address addr) view external returns (uint256);
 
-    function royalties(address addr) view external returns (uint256);
-    function setRoyalty(address addr, uint256 royalty) external;
+    function royalties(address addr) view external returns (address receiver, uint256 royalty);
+    function setRoyalty(address addr, address receiver, uint256 royalty) external;
 
     function extras(address addr) view external returns (string memory);
     function setExtra(address addr, string calldata extra) external;
