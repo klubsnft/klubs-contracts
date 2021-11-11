@@ -23,6 +23,7 @@ contract PFPStore is Ownable, IPFPStore {
     }
 
     function setFee(uint256 _fee) onlyOwner external {
+        require(fee < 9 * 1e3);     //max 90%
         fee = _fee;
     }
 
