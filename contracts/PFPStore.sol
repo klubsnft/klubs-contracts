@@ -250,6 +250,7 @@ contract PFPStore is Ownable, IPFPStore {
     ) external whitelist(addr) {
         IKIP17 nft = IKIP17(addr);
         require(nft.ownerOf(id) == msg.sender);
+        require(endBlock > block.number);
         nft.transferFrom(msg.sender, address(this), id);
 
         auctions[addr][id] = AuctionInfo({seller: msg.sender, startPrice: startPrice, endBlock: endBlock});
