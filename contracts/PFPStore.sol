@@ -36,7 +36,7 @@ contract PFPStore is Ownable, IPFPStore {
     }
 
     modifier whitelist(address addr) {
-        require(pfps.banned(addr) != true);
+        require(pfps.added(addr) && !pfps.banned(addr));
         _;
     }
 
