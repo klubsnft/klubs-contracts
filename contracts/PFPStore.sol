@@ -236,7 +236,7 @@ contract PFPStore is Ownable, IPFPStore {
 
         AuctionInfo memory _auction = auctions[addr][id];
         Bidding[] memory bs = biddings[addr][id];
-        Bidding memory bidding = bs[bs.length - 1];
+        Bidding memory bidding = bs[bs.length.sub(1)];
 
         require(block.number >= _auction.endBlock);
 
