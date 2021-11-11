@@ -168,7 +168,6 @@ contract PFPStore is Ownable, IPFPStore {
     }
 
     function auction(address addr, uint256 id, uint256 startPrice, uint256 endBlock) whitelist(addr) public {
-        require(checkSelling(addr, id) != true);
 
         IKIP17 nft = IKIP17(addr);
         require(nft.ownerOf(id) == msg.sender);
