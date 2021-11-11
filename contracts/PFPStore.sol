@@ -31,7 +31,7 @@ contract PFPStore is Ownable, IPFPStore {
         feeReceiver = _receiver;
     }
 
-    function setPFPs(address _pfps) external onlyOwner {
+    function setPFPs(IPFPs _pfps) external onlyOwner {
         pfps = _pfps;
     }
 
