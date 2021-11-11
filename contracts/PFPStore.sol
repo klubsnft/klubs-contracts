@@ -238,12 +238,12 @@ contract PFPStore is Ownable, IPFPStore {
         Bidding[] memory bs = biddings[addr][id];
         Bidding memory bidding = bs[bs.length - 1];
 
-        require(bidding.bidder == msg.sender && block.number >= _auction.endBlock);
+        require(block.number >= _auction.endBlock);
 
-        IKIP17(addr).safeTransferFrom(address(this), msg.sender, id);
+        IKIP17(addr).safeTransferFrom(address(this), bidding.bidder, id);
 
         distributeReward(addr, id, _auction.seller, bidding.price);
 
-        emit Claim(addr, id, msg.sender, bidding.price);
+        emit Claim(addr, id, bidding.bidder, bidding.price);
     }
 }
