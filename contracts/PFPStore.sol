@@ -74,8 +74,12 @@ contract PFPStore is Ownable, IPFPStore {
     mapping(address => PFPInfo[]) public userSellInfo;              //userSellInfo[seller]
     mapping(address => mapping(uint256 => uint256)) private userSellIndex;   //userSellIndex[addr][id]
 
-    function userSellInfoLength(address user) public view returns (uint256) {
-        return userSellInfo[user].length;
+    function userSellInfoLength(address seller) public view returns (uint256) {
+        return userSellInfo[seller].length;
+    }
+
+    function checkSelling(address addr, uint256 id) external view returns (bool) {
+        return sales[addr][id].seller != address(0);
     }
 
     function sell(
@@ -96,23 +100,6 @@ contract PFPStore is Ownable, IPFPStore {
         userSellIndex[addr][id] = lastIndex;
 
         emit Sell(addr, id, msg.sender, price);
-    }
-
-    function checkSelling(address addr, uint256 id) external view returns (bool) {
-        return sales[addr][id].seller != address(0);
-    }
-
-    function buy(address addr, uint256 id) external {
-        Sale memory sale = sales[addr][id];
-        require(sale.seller != address(0));
-
-        IKIP17(addr).safeTransferFrom(address(this), msg.sender, id);
-
-        mix.transferFrom(msg.sender, address(this), sale.price);
-        distributeReward(addr, id, sale.seller, sale.price);
-        removeUserSell(sale.seller, addr, id);
-
-        emit Buy(addr, id, msg.sender, sale.price);
     }
 
     function removeUserSell(address seller, address addr, uint256 id) internal {
@@ -141,6 +128,19 @@ contract PFPStore is Ownable, IPFPStore {
         emit CancelSale(addr, id, msg.sender);
     }
 
+    function buy(address addr, uint256 id) external {
+        Sale memory sale = sales[addr][id];
+        require(sale.seller != address(0));
+
+        IKIP17(addr).safeTransferFrom(address(this), msg.sender, id);
+
+        mix.transferFrom(msg.sender, address(this), sale.price);
+        distributeReward(addr, id, sale.seller, sale.price);
+        removeUserSell(sale.seller, addr, id);
+
+        emit Buy(addr, id, msg.sender, sale.price);
+    }
+
     struct OfferInfo {
         address offeror;
         uint256 price;
@@ -149,15 +149,15 @@ contract PFPStore is Ownable, IPFPStore {
     mapping(address => PFPInfo[]) public userOfferInfo;                     //userOfferInfo[offeror]
     mapping(address => mapping(uint256 => uint256)) private userOfferIndex;   //userOfferIndex[addr][id]
 
-    function userOfferInfoLength(address user) public view returns (uint256) {
-        return userOfferInfo[user].length;
+    function userOfferInfoLength(address offeror) public view returns (uint256) {
+        return userOfferInfo[offeror].length;
     }
 
     function offerCount(address addr, uint256 id) external view returns (uint256) {
         return offers[addr][id].length;
     }
 
-    function offer(
+    function makeOffer(
         address addr,
         uint256 id,
         uint256 price
@@ -175,7 +175,7 @@ contract PFPStore is Ownable, IPFPStore {
         userOfferInfo[msg.sender].push(PFPInfo({pfp: addr, id: id, price: price}));
         userOfferIndex[addr][id] = lastIndex;
 
-        emit Offer(addr, id, offerId, msg.sender, price);
+        emit MakeOffer(addr, id, offerId, msg.sender, price);
     }
 
     function removeUserOffer(address offeror, address addr, uint256 id) internal {
@@ -234,15 +234,15 @@ contract PFPStore is Ownable, IPFPStore {
     mapping(address => PFPInfo[]) public userAuctionInfo;                       //userAuctionInfo[seller]
     mapping(address => mapping(uint256 => uint256)) private userAuctionIndex;   //userAuctionIndex[addr][id]
 
-    function userAuctionInfoLength(address user) public view returns (uint256) {
-        return userAuctionInfo[user].length;
+    function userAuctionInfoLength(address seller) public view returns (uint256) {
+        return userAuctionInfo[seller].length;
     }
 
     function checkAuction(address addr, uint256 id) external view returns (bool) {
         return auctions[addr][id].seller != address(0);
     }
 
-    function auction(
+    function createAuction(
         address addr,
         uint256 id,
         uint256 startPrice,
@@ -259,7 +259,7 @@ contract PFPStore is Ownable, IPFPStore {
         userAuctionInfo[msg.sender].push(PFPInfo({pfp: addr, id: id, price: startPrice}));
         userAuctionIndex[addr][id] = lastIndex;
 
-        emit Auction(addr, id, msg.sender, startPrice, endBlock);
+        emit CreateAuction(addr, id, msg.sender, startPrice, endBlock);
     }
 
     function removeUserAuction(address seller, address addr, uint256 id) internal {
@@ -299,8 +299,8 @@ contract PFPStore is Ownable, IPFPStore {
     mapping(address => PFPInfo[]) public userBiddingInfo;                       //userBiddingInfo[seller]
     mapping(address => mapping(uint256 => uint256)) private userBiddingIndex;   //userBiddingIndex[addr][id]
 
-    function userBiddingInfoLength(address user) public view returns (uint256) {
-        return userBiddingInfo[user].length;
+    function userBiddingInfoLength(address bidder) public view returns (uint256) {
+        return userBiddingInfo[bidder].length;
     }
 
     function biddingCount(address addr, uint256 id) external view returns (uint256) {
