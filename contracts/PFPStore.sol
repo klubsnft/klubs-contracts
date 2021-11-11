@@ -41,13 +41,12 @@ contract PFPStore is Ownable, IPFPStore {
     }
 
     function distributeReward(address addr, uint256 id, address to, uint256 amount) private {
-
         uint256 _fee = amount.mul(fee).div(1e4);
-        mix.transfer(feeReceiver, _fee);
+        if(_fee > 0) mix.transfer(feeReceiver, _fee);
 
         (address receiver, uint256 royalty) = pfps.royalties(addr);
         uint256 _royalty = amount.mul(royalty).div(1e4);
-        mix.transfer(receiver, _royalty);
+        if(_royalty > 0) mix.transfer(receiver, _royalty);
 
         mix.transfer(to, amount.sub(_fee).sub(_royalty));
 
