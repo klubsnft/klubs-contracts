@@ -136,12 +136,11 @@ contract PFPStore is Ownable, IPFPStore {
         OfferInfo[] storage os = offers[addr][id];
         OfferInfo memory _offer = os[offerId];
         require(_offer.offeror == msg.sender);
-        uint256 price = _offer.price;
         delete os[offerId];
 
-        mix.transfer(msg.sender, price);
+        mix.transfer(msg.sender, _offer.price);
 
-        emit CancelOffer(addr, id, offerId, _offer.offeror);
+        emit CancelOffer(addr, id, offerId, msg.sender);
     }
 
     function acceptOffer(address addr, uint256 id, uint256 offerId) external {
