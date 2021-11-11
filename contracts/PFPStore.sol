@@ -76,7 +76,7 @@ contract PFPStore is Ownable, IPFPStore {
         emit Sell(addr, id, msg.sender, price);
     }
 
-    function checkSelling(address addr, uint256 id) view public returns (bool) {
+    function checkSelling(address addr, uint256 id) view external returns (bool) {
         return sales[addr][id].seller != address(0);
     }
 
@@ -164,11 +164,11 @@ contract PFPStore is Ownable, IPFPStore {
     }
     mapping(address => mapping(uint256 => AuctionInfo)) public auctions;
 
-    function checkAuction(address addr, uint256 id) view public returns (bool) {
+    function checkAuction(address addr, uint256 id) view external returns (bool) {
         return auctions[addr][id].seller != address(0);
     }
 
-    function auction(address addr, uint256 id, uint256 startPrice, uint256 endBlock) whitelist(addr) public {
+    function auction(address addr, uint256 id, uint256 startPrice, uint256 endBlock) whitelist(addr) external {
 
         IKIP17 nft = IKIP17(addr);
         require(nft.ownerOf(id) == msg.sender);
