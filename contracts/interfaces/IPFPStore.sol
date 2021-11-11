@@ -15,38 +15,25 @@ interface IPFPStore {
     event Bid(address indexed addr, uint256 indexed id, address indexed bidder, uint256 price);
     event Claim(address indexed addr, uint256 indexed id, address indexed bidder, uint256 price);
 
-    function sales(address addr, uint256 id) external returns (
-        address seller,
-        uint256 price
-    );
+    function sales(address addr, uint256 id) external view returns (address seller, uint256 price);
     function sell(address addr, uint256 id, uint256 price) external;
     function checkSelling(address addr, uint256 id) view external returns (bool);
     function buy(address addr, uint256 id) external;
     function cancelSale(address addr, uint256 id) external;
 
-    function offers(address addr, uint256 id, uint256 index) external returns (
-        address offeror,
-        uint256 price
-    );
     function offerCount(address addr, uint256 id) view external returns (uint256);
     function offer(address addr, uint256 id, uint256 price) external returns (uint256 offerId);
+    function offers(address addr, uint256 id, uint256 index) external view returns (address offeror, uint256 price);
     function cancelOffer(address addr, uint256 id, uint256 offerId) external;
     function acceptOffer(address addr, uint256 id, uint256 offerId) external;
 
-    function auctions(address addr, uint256 id) external returns (
-        address seller,
-        uint256 startPrice,
-        uint256 endBlock
-    );
     function auction(address addr, uint256 id, uint256 startPrice, uint256 endBlock) external;
+    function auctions(address addr, uint256 id) external view returns (address seller, uint256 startPrice, uint256 endBlock);
     function cancelAuction(address addr, uint256 id) external;
     function checkAuction(address addr, uint256 id) view external returns (bool);
 
-    function biddings(address addr, uint256 id, uint256 index) external returns (
-        address bidder,
-        uint256 price
-    );
     function biddingCount(address addr, uint256 id) view external returns (uint256);
+    function biddings(address addr, uint256 id, uint256 index) external view returns (address bidder, uint256 price);
     function bid(address addr, uint256 id, uint256 price) external returns (uint256 biddingId);
     function claim(address addr, uint256 id) external;
 }
