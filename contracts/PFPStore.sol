@@ -27,6 +27,10 @@ contract PFPStore is Ownable, IPFPStore {
         fee = _fee;
     }
 
+    function setFeeReceiver(address _receiver) onlyOwner external {
+        feeReceiver = _receiver;
+    }
+
     modifier whitelist(address addr) {
         require(pfps.banned(addr) != true);
         _;
