@@ -62,6 +62,8 @@ contract PFPStore is Ownable, IPFPStore {
     mapping(address => mapping(uint256 => Sale)) public sales;
 
     function sell(address addr, uint256 id, uint256 price) whitelist(addr) external {
+        require(price > 0);
+        
         IKIP17 nft = IKIP17(addr);
         require(nft.ownerOf(id) == msg.sender);
         nft.transferFrom(msg.sender, address(this), id);
