@@ -400,6 +400,7 @@ contract PFPStore is Ownable, IPFPStore {
 
     //"cancel" functions with ownership
     function cancelSaleByOwner(address[] calldata addrs, uint256[] calldata ids) external onlyOwner {
+        require(addrs.length == ids.length);
         for (uint256 i = 0; i < addrs.length; i++) {
             address seller = sales[addrs[i]][ids[i]].seller;
 
@@ -417,6 +418,7 @@ contract PFPStore is Ownable, IPFPStore {
         uint256[] calldata ids,
         uint256[] calldata offerIds
     ) external onlyOwner {
+        require(addrs.length == ids.length && addrs.length == offerIds.length);
         for (uint256 i = 0; i < addrs.length; i++) {
             OfferInfo[] storage os = offers[addrs[i]][ids[i]];
             OfferInfo memory _offer = os[offerIds[i]];
@@ -431,6 +433,7 @@ contract PFPStore is Ownable, IPFPStore {
     }
 
     function cancelAuctionByOwner(address[] calldata addrs, uint256[] calldata ids) external onlyOwner {
+        require(addrs.length == ids.length);
         for (uint256 i = 0; i < addrs.length; i++) {
             AuctionInfo memory _auction = auctions[addrs[i]][ids[i]];
             Bidding[] memory bs = biddings[addrs[i]][ids[i]];
