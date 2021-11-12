@@ -165,7 +165,7 @@ contract PFPStore is Ownable, IPFPStore {
         require(addrs.length == ids.length);
         for (uint256 i = 0; i < addrs.length; i++) {
             Sale memory sale = sales[addrs[i]][ids[i]];
-            require(sale.seller != address(0));
+            require(sale.seller != address(0) && sale.seller != msg.sender);
 
             IKIP17(addrs[i]).safeTransferFrom(address(this), msg.sender, ids[i]);
 
@@ -199,6 +199,7 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 price
     ) external pfpWhitelist(addr) userWhitelist(msg.sender) returns (uint256 offerId) {
         require(price > 0);
+        require(IKIP17(addr).ownerOf(id) != msg.sender);
 
         OfferInfo[] storage os = offers[addr][id];
         offerId = os.length;
@@ -253,6 +254,7 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 id,
         uint256 offerId
     ) external userWhitelist(msg.sender) {
+        require(IKIP17(addr).ownerOf(id) != msg.sender);
         OfferInfo[] storage os = offers[addr][id];
         OfferInfo memory _offer = os[offerId];
 
@@ -358,7 +360,8 @@ contract PFPStore is Ownable, IPFPStore {
     ) external userWhitelist(msg.sender) returns (uint256 biddingId) {
         AuctionInfo storage _auction = auctions[addr][id];
         uint256 endBlock = _auction.endBlock;
-        require(_auction.seller != address(0) && block.number < endBlock);
+        address seller = _auction.seller;
+        require(seller != address(0) && seller != msg.sender && block.number < endBlock);
 
         Bidding[] storage bs = biddings[addr][id];
         biddingId = bs.length;
