@@ -7,6 +7,12 @@ import { HardhatUserConfig } from "hardhat/types";
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.5.6",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
   },
   networks: {
     kovan: {
