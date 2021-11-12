@@ -87,9 +87,9 @@ contract PFPStore is Ownable, IPFPStore {
         address seller;
         uint256 price;
     }
-    mapping(address => mapping(uint256 => Sale)) public sales;      //sales[addr][id]
-    mapping(address => PFPInfo[]) public userSellInfo;              //userSellInfo[seller]
-    mapping(address => mapping(uint256 => uint256)) private userSellIndex;   //userSellIndex[addr][id]
+    mapping(address => mapping(uint256 => Sale)) public sales; //sales[addr][id]
+    mapping(address => PFPInfo[]) public userSellInfo; //userSellInfo[seller]
+    mapping(address => mapping(uint256 => uint256)) private userSellIndex; //userSellIndex[addr][id]
 
     function userSellInfoLength(address seller) public view returns (uint256) {
         return userSellInfo[seller].length;
@@ -162,9 +162,9 @@ contract PFPStore is Ownable, IPFPStore {
         address offeror;
         uint256 price;
     }
-    mapping(address => mapping(uint256 => OfferInfo[])) public offers;      //offers[addr][id]
-    mapping(address => PFPInfo[]) public userOfferInfo;                     //userOfferInfo[offeror]
-    mapping(address => mapping(uint256 => uint256)) private userOfferIndex;   //userOfferIndex[addr][id]
+    mapping(address => mapping(uint256 => OfferInfo[])) public offers; //offers[addr][id]
+    mapping(address => PFPInfo[]) public userOfferInfo; //userOfferInfo[offeror]
+    mapping(address => mapping(uint256 => uint256)) private userOfferIndex; //userOfferIndex[addr][id]
 
     function userOfferInfoLength(address offeror) public view returns (uint256) {
         return userOfferInfo[offeror].length;
@@ -195,7 +195,11 @@ contract PFPStore is Ownable, IPFPStore {
         emit MakeOffer(addr, id, offerId, msg.sender, price);
     }
 
-    function removeUserOffer(address offeror, address addr, uint256 id) internal {
+    function removeUserOffer(
+        address offeror,
+        address addr,
+        uint256 id
+    ) internal {
         uint256 lastOfferIndex = userOfferInfoLength(offeror);
         uint256 offerIndex = userOfferIndex[addr][id];
 
@@ -247,9 +251,9 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 startPrice;
         uint256 endBlock;
     }
-    mapping(address => mapping(uint256 => AuctionInfo)) public auctions;        //auctions[addr][id]
-    mapping(address => PFPInfo[]) public userAuctionInfo;                       //userAuctionInfo[seller]
-    mapping(address => mapping(uint256 => uint256)) private userAuctionIndex;   //userAuctionIndex[addr][id]
+    mapping(address => mapping(uint256 => AuctionInfo)) public auctions; //auctions[addr][id]
+    mapping(address => PFPInfo[]) public userAuctionInfo; //userAuctionInfo[seller]
+    mapping(address => mapping(uint256 => uint256)) private userAuctionIndex; //userAuctionIndex[addr][id]
 
     function userAuctionInfoLength(address seller) public view returns (uint256) {
         return userAuctionInfo[seller].length;
@@ -279,7 +283,11 @@ contract PFPStore is Ownable, IPFPStore {
         emit CreateAuction(addr, id, msg.sender, startPrice, endBlock);
     }
 
-    function removeUserAuction(address seller, address addr, uint256 id) internal {
+    function removeUserAuction(
+        address seller,
+        address addr,
+        uint256 id
+    ) internal {
         uint256 lastAuctionIndex = userAuctionInfoLength(seller);
         uint256 sellIndex = userAuctionIndex[addr][id];
 
@@ -312,9 +320,9 @@ contract PFPStore is Ownable, IPFPStore {
         address bidder;
         uint256 price;
     }
-    mapping(address => mapping(uint256 => Bidding[])) public biddings;      //bidding[addr][id]
-    mapping(address => PFPInfo[]) public userBiddingInfo;                       //userBiddingInfo[seller]
-    mapping(address => mapping(uint256 => uint256)) private userBiddingIndex;   //userBiddingIndex[addr][id]
+    mapping(address => mapping(uint256 => Bidding[])) public biddings; //bidding[addr][id]
+    mapping(address => PFPInfo[]) public userBiddingInfo; //userBiddingInfo[seller]
+    mapping(address => mapping(uint256 => uint256)) private userBiddingIndex; //userBiddingIndex[addr][id]
 
     function userBiddingInfoLength(address bidder) public view returns (uint256) {
         return userBiddingInfo[bidder].length;
@@ -355,7 +363,11 @@ contract PFPStore is Ownable, IPFPStore {
         emit Bid(addr, id, msg.sender, price);
     }
 
-    function removeUserBidding(address bidder, address addr, uint256 id) internal {
+    function removeUserBidding(
+        address bidder,
+        address addr,
+        uint256 id
+    ) internal {
         uint256 lastBiddingIndex = userBiddingInfoLength(bidder);
         uint256 sellIndex = userBiddingIndex[addr][id];
 
@@ -388,7 +400,7 @@ contract PFPStore is Ownable, IPFPStore {
 
     //"cancel" functions with ownership
     function cancelSaleByOwner(address[] calldata addrs, uint256[] calldata ids) external onlyOwner {
-        for(uint256 i = 0; i < addrs.length; i++) {
+        for (uint256 i = 0; i < addrs.length; i++) {
             address seller = sales[addrs[i]][ids[i]].seller;
 
             IKIP17(addrs[i]).transferFrom(address(this), seller, ids[i]);
@@ -400,8 +412,12 @@ contract PFPStore is Ownable, IPFPStore {
         }
     }
 
-    function cancelOfferByOwner(address[] calldata addrs, uint256[] calldata ids, uint256[] calldata offerIds) external onlyOwner {
-        for(uint256 i = 0; i < addrs.length; i++) {
+    function cancelOfferByOwner(
+        address[] calldata addrs,
+        uint256[] calldata ids,
+        uint256[] calldata offerIds
+    ) external onlyOwner {
+        for (uint256 i = 0; i < addrs.length; i++) {
             OfferInfo[] storage os = offers[addrs[i]][ids[i]];
             OfferInfo memory _offer = os[offerIds[i]];
 
@@ -415,17 +431,17 @@ contract PFPStore is Ownable, IPFPStore {
     }
 
     function cancelAuctionByOwner(address[] calldata addrs, uint256[] calldata ids) external onlyOwner {
-        for(uint256 i = 0; i < addrs.length; i++) {
+        for (uint256 i = 0; i < addrs.length; i++) {
             AuctionInfo memory _auction = auctions[addrs[i]][ids[i]];
             Bidding[] memory bs = biddings[addrs[i]][ids[i]];
 
-            if(bs.length > 0) {
+            if (bs.length > 0) {
                 Bidding memory bestBidding = bs[bs.length - 1];
                 mix.transfer(bestBidding.bidder, bestBidding.price);
                 removeUserBidding(bestBidding.bidder, addrs[i], ids[i]);
                 delete biddings[addrs[i]][ids[i]];
             }
-            
+
             IKIP17(addrs[i]).transferFrom(address(this), _auction.seller, ids[i]);
 
             delete auctions[addrs[i]][ids[i]];
