@@ -30,7 +30,7 @@ contract PFPStore is Ownable, IPFPStore {
     }
 
     function setFee(uint256 _fee) external onlyOwner {
-        require(fee < 9 * 1e3); //max 90%
+        require(_fee < 9 * 1e3); //max 90%
         fee = _fee;
     }
 
@@ -254,9 +254,9 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 id,
         uint256 offerId
     ) external userWhitelist(msg.sender) {
-        require(IKIP17(addr).ownerOf(id) != msg.sender);
         OfferInfo[] storage os = offers[addr][id];
         OfferInfo memory _offer = os[offerId];
+        require(_offer.offeror != msg.sender);
 
         IKIP17(addr).safeTransferFrom(msg.sender, _offer.offeror, id);
         uint256 price = _offer.price;
