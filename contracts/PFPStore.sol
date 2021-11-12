@@ -18,6 +18,7 @@ contract PFPStore is Ownable, IPFPStore {
 
     uint256 public fee = 25;
     address public feeReceiver;
+    uint256 public auctionExtensionInterval = 300;
 
     IPFPs public pfps;
     IMix public mix;
@@ -35,6 +36,10 @@ contract PFPStore is Ownable, IPFPStore {
 
     function setFeeReceiver(address _receiver) external onlyOwner {
         feeReceiver = _receiver;
+    }
+
+    function setAuctionExtensionInterval(uint256 interval) external onlyOwner {
+        auctionExtensionInterval = interval;
     }
 
     function setPFPs(IPFPs _pfps) external onlyOwner {
@@ -351,8 +356,9 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 id,
         uint256 price
     ) external userWhitelist(msg.sender) returns (uint256 biddingId) {
-        AuctionInfo memory _auction = auctions[addr][id];
-        require(_auction.seller != address(0) && block.number < _auction.endBlock);
+        AuctionInfo storage _auction = auctions[addr][id];
+        uint256 endBlock = _auction.endBlock;
+        require(_auction.seller != address(0) && block.number < endBlock);
 
         Bidding[] storage bs = biddings[addr][id];
         biddingId = bs.length;
@@ -373,6 +379,10 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 lastIndex = userBiddingInfoLength(msg.sender);
         userBiddingInfo[msg.sender].push(PFPInfo({pfp: addr, id: id, price: price}));
         userBiddingIndex[addr][id] = lastIndex;
+
+        if(block.number >= endBlock.sub(auctionExtensionInterval)) {
+            _auction.endBlock = endBlock.add(auctionExtensionInterval);
+        }
 
         emit Bid(addr, id, msg.sender, price);
     }

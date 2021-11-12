@@ -21,6 +21,7 @@ interface IPFPStore {
     event Ban(address indexed addr);
     event Unban(address indexed addr);
 
+    function auctionExtensionInterval() external view returns (uint256);
     function isBanned(address user) external view returns (bool);
 
     function sales(address addr, uint256 id) external view returns (address seller, uint256 price);
