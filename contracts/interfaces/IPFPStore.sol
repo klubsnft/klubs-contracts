@@ -18,6 +18,11 @@ interface IPFPStore {
     event CancelOfferByOwner(address indexed addr, uint256 indexed id, uint256 indexed offerId);
     event CancelAuctionByOwner(address indexed addr, uint256 indexed id);
 
+    event Ban(address indexed addr);
+    event Unban(address indexed addr);
+
+    function isBanned(address user) external view returns (bool);
+
     function sales(address addr, uint256 id) external view returns (address seller, uint256 price);
     function userSellInfo(address seller, uint256 index) external view returns (address pfp, uint256 id, uint256 price);
     function userSellInfoLength(address seller) external view returns (uint256);

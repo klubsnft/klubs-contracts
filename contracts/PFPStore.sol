@@ -41,8 +41,25 @@ contract PFPStore is Ownable, IPFPStore {
         pfps = _pfps;
     }
 
-    modifier whitelist(address addr) {
+    modifier pfpWhitelist(address addr) {
         require(pfps.added(addr) && !pfps.banned(addr));
+        _;
+    }
+
+    mapping(address => bool) public isBanned;
+
+    function banUser(address user) external onlyOwner {
+        isBanned[user] = true;
+        emit Ban(user);
+    }
+
+    function unbanUser(address user) external onlyOwner {
+        isBanned[user] = false;
+        emit Unban(user);
+    }
+
+    modifier userWhitelist(address user) {
+        require(!isBanned[user]);
         _;
     }
 
@@ -86,7 +103,7 @@ contract PFPStore is Ownable, IPFPStore {
         address addr,
         uint256 id,
         uint256 price
-    ) external whitelist(addr) {
+    ) external pfpWhitelist(addr) userWhitelist(msg.sender) {
         require(price > 0);
 
         IKIP17 nft = IKIP17(addr);
@@ -128,7 +145,7 @@ contract PFPStore is Ownable, IPFPStore {
         emit CancelSale(addr, id, msg.sender);
     }
 
-    function buy(address addr, uint256 id) external {
+    function buy(address addr, uint256 id) external userWhitelist(msg.sender) {
         Sale memory sale = sales[addr][id];
         require(sale.seller != address(0));
 
@@ -161,7 +178,7 @@ contract PFPStore is Ownable, IPFPStore {
         address addr,
         uint256 id,
         uint256 price
-    ) external whitelist(addr) returns (uint256 offerId) {
+    ) external pfpWhitelist(addr) userWhitelist(msg.sender) returns (uint256 offerId) {
         require(price > 0);
 
         OfferInfo[] storage os = offers[addr][id];
@@ -212,7 +229,7 @@ contract PFPStore is Ownable, IPFPStore {
         address addr,
         uint256 id,
         uint256 offerId
-    ) external {
+    ) external userWhitelist(msg.sender) {
         OfferInfo[] storage os = offers[addr][id];
         OfferInfo memory _offer = os[offerId];
 
@@ -247,7 +264,7 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 id,
         uint256 startPrice,
         uint256 endBlock
-    ) external whitelist(addr) {
+    ) external pfpWhitelist(addr) userWhitelist(msg.sender) {
         IKIP17 nft = IKIP17(addr);
         require(nft.ownerOf(id) == msg.sender);
         require(endBlock > block.number);
@@ -311,7 +328,7 @@ contract PFPStore is Ownable, IPFPStore {
         address addr,
         uint256 id,
         uint256 price
-    ) external returns (uint256 biddingId) {
+    ) external userWhitelist(msg.sender) returns (uint256 biddingId) {
         AuctionInfo memory _auction = auctions[addr][id];
         require(_auction.seller != address(0) && block.number < _auction.endBlock);
 
