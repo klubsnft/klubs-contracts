@@ -13,9 +13,9 @@ contract TestPFP is KIP17Full("TEST PFP", "TPFP"), KIP17Mintable, KIP17Burnable,
         }
     }
 
-    function massMint(uint256 amount) external onlyMinter {
+    function massMint(address to, uint256 amount) external onlyMinter {
         for (uint256 i = 0; i < amount; i++) {
-            mint(msg.sender, i);
+            mint(to, i);
         }
     }
 }
