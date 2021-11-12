@@ -22,6 +22,7 @@ interface IPFPs {
     function addrCount() view external returns (uint256);
     function addrs(uint256 index) view external returns (address);
     function added(address addr) view external returns (bool);
+    function addedBlocks(address addr) view external returns (uint256);
 
     function managerCount(address addr) view external returns (uint256);
     function managers(address addr, uint256 index) view external returns (address);

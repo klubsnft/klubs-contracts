@@ -30,6 +30,7 @@ contract PFPs is Ownable, IPFPs {
 
     address[] public addrs;
     mapping(address => bool) public added;
+    mapping(address => uint256) public addedBlocks;
     mapping(address => address[]) public managers;
     mapping(address => mapping(address => uint256)) public managersIndex;
 
@@ -45,6 +46,7 @@ contract PFPs is Ownable, IPFPs {
         require(added[addr] != true);
         addrs.push(addr);
         added[addr] = true;
+        addedBlocks[addr] = block.number;
         managers[addr].push(manager);
         emit Add(addr, manager);
     }
