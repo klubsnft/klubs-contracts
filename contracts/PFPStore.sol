@@ -100,26 +100,34 @@ contract PFPStore is Ownable, IPFPStore {
     }
 
     function sell(
-        address addr,
-        uint256 id,
-        uint256 price
-    ) external pfpWhitelist(addr) userWhitelist(msg.sender) {
-        require(price > 0);
+        address[] calldata addrs,
+        uint256[] calldata ids,
+        uint256[] calldata prices
+    ) external userWhitelist(msg.sender) {
+        require(addrs.length == ids.length && addrs.length == prices.length);
+        for (uint256 i = 0; i < addrs.length; i++) {
+            require(pfps.added(addrs[i]) && !pfps.banned(addrs[i]));
+            require(prices[i] > 0);
 
-        IKIP17 nft = IKIP17(addr);
-        require(nft.ownerOf(id) == msg.sender);
-        nft.transferFrom(msg.sender, address(this), id);
+            IKIP17 nft = IKIP17(addrs[i]);
+            require(nft.ownerOf(ids[i]) == msg.sender);
+            nft.transferFrom(msg.sender, address(this), ids[i]);
 
-        sales[addr][id] = Sale({seller: msg.sender, price: price});
+            sales[addrs[i]][ids[i]] = Sale({seller: msg.sender, price: prices[i]});
 
-        uint256 lastIndex = userSellInfoLength(msg.sender);
-        userSellInfo[msg.sender].push(PFPInfo({pfp: addr, id: id, price: price}));
-        userSellIndex[addr][id] = lastIndex;
+            uint256 lastIndex = userSellInfoLength(msg.sender);
+            userSellInfo[msg.sender].push(PFPInfo({pfp: addrs[i], id: ids[i], price: prices[i]}));
+            userSellIndex[addrs[i]][ids[i]] = lastIndex;
 
-        emit Sell(addr, id, msg.sender, price);
+            emit Sell(addrs[i], ids[i], msg.sender, prices[i]);
+        }
     }
 
-    function removeUserSell(address seller, address addr, uint256 id) internal {
+    function removeUserSell(
+        address seller,
+        address addr,
+        uint256 id
+    ) internal {
         uint256 lastSellIndex = userSellInfoLength(seller);
         uint256 sellIndex = userSellIndex[addr][id];
 
@@ -134,28 +142,34 @@ contract PFPStore is Ownable, IPFPStore {
         delete userSellIndex[addr][id];
     }
 
-    function cancelSale(address addr, uint256 id) external {
-        address seller = sales[addr][id].seller;
-        require(seller == msg.sender);
+    function cancelSale(address[] calldata addrs, uint256[] calldata ids) external {
+        require(addrs.length == ids.length);
+        for (uint256 i = 0; i < addrs.length; i++) {
+            address seller = sales[addrs[i]][ids[i]].seller;
+            require(seller == msg.sender);
 
-        IKIP17(addr).transferFrom(address(this), seller, id);
-        delete sales[addr][id];
-        removeUserSell(seller, addr, id);
+            IKIP17(addrs[i]).transferFrom(address(this), seller, ids[i]);
+            delete sales[addrs[i]][ids[i]];
+            removeUserSell(seller, addrs[i], ids[i]);
 
-        emit CancelSale(addr, id, msg.sender);
+            emit CancelSale(addrs[i], ids[i], msg.sender);
+        }
     }
 
-    function buy(address addr, uint256 id) external userWhitelist(msg.sender) {
-        Sale memory sale = sales[addr][id];
-        require(sale.seller != address(0));
+    function buy(address[] calldata addrs, uint256[] calldata ids) external userWhitelist(msg.sender) {
+        require(addrs.length == ids.length);
+        for (uint256 i = 0; i < addrs.length; i++) {
+            Sale memory sale = sales[addrs[i]][ids[i]];
+            require(sale.seller != address(0));
 
-        IKIP17(addr).safeTransferFrom(address(this), msg.sender, id);
+            IKIP17(addrs[i]).safeTransferFrom(address(this), msg.sender, ids[i]);
 
-        mix.transferFrom(msg.sender, address(this), sale.price);
-        distributeReward(addr, id, sale.seller, sale.price);
-        removeUserSell(sale.seller, addr, id);
+            mix.transferFrom(msg.sender, address(this), sale.price);
+            distributeReward(addrs[i], ids[i], sale.seller, sale.price);
+            removeUserSell(sale.seller, addrs[i], ids[i]);
 
-        emit Buy(addr, id, msg.sender, sale.price);
+            emit Buy(addrs[i], ids[i], msg.sender, sale.price);
+        }
     }
 
     struct OfferInfo {
