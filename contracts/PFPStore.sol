@@ -368,4 +368,54 @@ contract PFPStore is Ownable, IPFPStore {
 
         emit Claim(addr, id, bidding.bidder, bidding.price);
     }
+
+    //"cancel" functions with ownership
+    function cancelSaleByOwner(address[] calldata addrs, uint256[] calldata ids) external onlyOwner {
+        for(uint256 i = 0; i < addrs.length; i++) {
+            address seller = sales[addrs[i]][ids[i]].seller;
+
+            IKIP17(addrs[i]).transferFrom(address(this), seller, ids[i]);
+            delete sales[addrs[i]][ids[i]];
+            removeUserSell(seller, addrs[i], ids[i]);
+
+            emit CancelSale(addrs[i], ids[i], seller);
+            emit CancelSaleByOwner(addrs[i], ids[i]);
+        }
+    }
+
+    function cancelOfferByOwner(address[] calldata addrs, uint256[] calldata ids, uint256[] calldata offerIds) external onlyOwner {
+        for(uint256 i = 0; i < addrs.length; i++) {
+            OfferInfo[] storage os = offers[addrs[i]][ids[i]];
+            OfferInfo memory _offer = os[offerIds[i]];
+
+            delete os[offerIds[i]];
+            removeUserOffer(_offer.offeror, addrs[i], ids[i]);
+            mix.transfer(_offer.offeror, _offer.price);
+
+            emit CancelOffer(addrs[i], ids[i], offerIds[i], _offer.offeror);
+            emit CancelOfferByOwner(addrs[i], ids[i], offerIds[i]);
+        }
+    }
+
+    function cancelAuctionByOwner(address[] calldata addrs, uint256[] calldata ids) external onlyOwner {
+        for(uint256 i = 0; i < addrs.length; i++) {
+            AuctionInfo memory _auction = auctions[addrs[i]][ids[i]];
+            Bidding[] memory bs = biddings[addrs[i]][ids[i]];
+
+            if(bs.length > 0) {
+                Bidding memory bestBidding = bs[bs.length - 1];
+                mix.transfer(bestBidding.bidder, bestBidding.price);
+                removeUserBidding(bestBidding.bidder, addrs[i], ids[i]);
+                delete biddings[addrs[i]][ids[i]];
+            }
+            
+            IKIP17(addrs[i]).transferFrom(address(this), _auction.seller, ids[i]);
+
+            delete auctions[addrs[i]][ids[i]];
+            removeUserAuction(_auction.seller, addrs[i], ids[i]);
+
+            emit CancelAuction(addrs[i], ids[i], _auction.seller);
+            emit CancelAuctionByOwner(addrs[i], ids[i]);
+        }
+    }
 }
