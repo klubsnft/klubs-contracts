@@ -133,11 +133,11 @@ contract PFPStore is Ownable, IPFPStore {
         address addr,
         uint256 id
     ) internal {
-        uint256 lastSellIndex = userSellInfoLength(seller);
+        uint256 lastSellIndex = userSellInfoLength(seller).sub(1);
         uint256 sellIndex = userSellIndex[addr][id];
 
         if (sellIndex != lastSellIndex) {
-            PFPInfo memory lastSellInfo = userSellInfo[seller][lastSellIndex.sub(1)];
+            PFPInfo memory lastSellInfo = userSellInfo[seller][lastSellIndex];
 
             userSellInfo[seller][sellIndex] = lastSellInfo;
             userSellIndex[lastSellInfo.pfp][lastSellInfo.id] = sellIndex;
@@ -183,7 +183,7 @@ contract PFPStore is Ownable, IPFPStore {
     }
     mapping(address => mapping(uint256 => OfferInfo[])) public offers; //offers[addr][id]
     mapping(address => PFPInfo[]) public userOfferInfo; //userOfferInfo[offeror]
-    mapping(address => mapping(uint256 => uint256)) private userOfferIndex; //userOfferIndex[addr][id]
+    mapping(address => mapping(uint256 => mapping(address => uint256))) private userOfferIndex; //userOfferIndex[addr][id][user]
 
     function userOfferInfoLength(address offeror) public view returns (uint256) {
         return userOfferInfo[offeror].length;
@@ -201,6 +201,11 @@ contract PFPStore is Ownable, IPFPStore {
         require(price > 0);
         require(IKIP17(addr).ownerOf(id) != msg.sender);
 
+        if (userOfferInfoLength(msg.sender) > 0) {
+            PFPInfo storage _pInfo = userOfferInfo[msg.sender][0];
+            require(userOfferIndex[addr][id][msg.sender] == 0 && (_pInfo.pfp != addr || _pInfo.id != id));
+        }
+
         OfferInfo[] storage os = offers[addr][id];
         offerId = os.length;
 
@@ -210,7 +215,7 @@ contract PFPStore is Ownable, IPFPStore {
 
         uint256 lastIndex = userOfferInfoLength(msg.sender);
         userOfferInfo[msg.sender].push(PFPInfo({pfp: addr, id: id, price: price}));
-        userOfferIndex[addr][id] = lastIndex;
+        userOfferIndex[addr][id][msg.sender] = lastIndex;
 
         emit MakeOffer(addr, id, offerId, msg.sender, price);
     }
@@ -220,18 +225,18 @@ contract PFPStore is Ownable, IPFPStore {
         address addr,
         uint256 id
     ) internal {
-        uint256 lastOfferIndex = userOfferInfoLength(offeror);
-        uint256 offerIndex = userOfferIndex[addr][id];
+        uint256 lastOfferIndex = userOfferInfoLength(offeror).sub(1);
+        uint256 offerIndex = userOfferIndex[addr][id][offeror];
 
         if (offerIndex != lastOfferIndex) {
-            PFPInfo memory lastOfferInfo = userOfferInfo[offeror][lastOfferIndex.sub(1)];
+            PFPInfo memory lastOfferInfo = userOfferInfo[offeror][lastOfferIndex];
 
             userOfferInfo[offeror][offerIndex] = lastOfferInfo;
-            userOfferIndex[lastOfferInfo.pfp][lastOfferInfo.id] = offerIndex;
+            userOfferIndex[lastOfferInfo.pfp][lastOfferInfo.id][offeror] = offerIndex;
         }
 
         userOfferInfo[offeror].length--;
-        delete userOfferIndex[addr][id];
+        delete userOfferIndex[addr][id][offeror];
     }
 
     function cancelOffer(
@@ -309,11 +314,11 @@ contract PFPStore is Ownable, IPFPStore {
         address addr,
         uint256 id
     ) internal {
-        uint256 lastAuctionIndex = userAuctionInfoLength(seller);
+        uint256 lastAuctionIndex = userAuctionInfoLength(seller).sub(1);
         uint256 sellIndex = userAuctionIndex[addr][id];
 
         if (sellIndex != lastAuctionIndex) {
-            PFPInfo memory lastAuctionInfo = userAuctionInfo[seller][lastAuctionIndex.sub(1)];
+            PFPInfo memory lastAuctionInfo = userAuctionInfo[seller][lastAuctionIndex];
 
             userAuctionInfo[seller][sellIndex] = lastAuctionInfo;
             userAuctionIndex[lastAuctionInfo.pfp][lastAuctionInfo.id] = sellIndex;
@@ -395,11 +400,11 @@ contract PFPStore is Ownable, IPFPStore {
         address addr,
         uint256 id
     ) internal {
-        uint256 lastBiddingIndex = userBiddingInfoLength(bidder);
+        uint256 lastBiddingIndex = userBiddingInfoLength(bidder).sub(1);
         uint256 sellIndex = userBiddingIndex[addr][id];
 
         if (sellIndex != lastBiddingIndex) {
-            PFPInfo memory lastBiddingInfo = userBiddingInfo[bidder][lastBiddingIndex.sub(1)];
+            PFPInfo memory lastBiddingInfo = userBiddingInfo[bidder][lastBiddingIndex];
 
             userBiddingInfo[bidder][sellIndex] = lastBiddingInfo;
             userBiddingIndex[lastBiddingInfo.pfp][lastBiddingInfo.id] = sellIndex;
