@@ -357,7 +357,7 @@ contract PFPStore is Ownable, IPFPStore {
         address addr,
         uint256 id,
         uint256 price
-    ) external userWhitelist(msg.sender) returns (uint256 biddingId) {
+    ) external pfpWhitelist(addr) userWhitelist(msg.sender) returns (uint256 biddingId) {
         AuctionInfo storage _auction = auctions[addr][id];
         uint256 endBlock = _auction.endBlock;
         address seller = _auction.seller;
