@@ -139,23 +139,29 @@ describe("PFPStore", () => {
         await pfpStore.connect(bob).createAuction(pfp.address, 0, 10000, endBlock0);
         expect((await pfpStore.auctions(pfp.address, 0)).endBlock).to.be.equal(endBlock0);
 
+        expect(await pfpStore.biddingCount(pfp.address, 0)).to.be.equal(0);
         await pfpStore.connect(carol).bid(pfp.address, 0, 10000);
         expect((await pfpStore.auctions(pfp.address, 0)).endBlock).to.be.equal(endBlock0 + 500);
+        expect(await pfpStore.biddingCount(pfp.address, 0)).to.be.equal(1);
 
         await mine(10);
         await pfpStore.connect(dan).bid(pfp.address, 0, 10001);
         expect((await pfpStore.auctions(pfp.address, 0)).endBlock).to.be.equal(endBlock0 + 500);
+        expect(await pfpStore.biddingCount(pfp.address, 0)).to.be.equal(2);
 
         await mineTo(endBlock0 - 1);
         await pfpStore.connect(dan).bid(pfp.address, 0, 10002);
         expect((await pfpStore.auctions(pfp.address, 0)).endBlock).to.be.equal(endBlock0 + 500);
+        expect(await pfpStore.biddingCount(pfp.address, 0)).to.be.equal(3);
 
         await pfpStore.connect(dan).bid(pfp.address, 0, 10003);
         expect((await pfpStore.auctions(pfp.address, 0)).endBlock).to.be.equal(endBlock0 + 1000);
+        expect(await pfpStore.biddingCount(pfp.address, 0)).to.be.equal(4);
 
         await mineTo(endBlock0 + 1000 - 1);
         await pfpStore.connect(carol).bid(pfp.address, 0, 10004);
         expect((await pfpStore.auctions(pfp.address, 0)).endBlock).to.be.equal(endBlock0 + 1500);
+        expect(await pfpStore.biddingCount(pfp.address, 0)).to.be.equal(5);
 
         await mineTo(endBlock0 + 1500);
         await expect(pfpStore.connect(carol).bid(pfp.address, 0, 10005)).to.be.reverted;
@@ -357,7 +363,7 @@ describe("PFPStore", () => {
         await pfpStore.connect(carol).cancelOffer(pfp.address, 0, 0);
     });
 
-    it.only("should be that sell, cancelSale, buy functions work properly with multiple parameters", async () => {
+    it("should be that sell, cancelSale, buy functions work properly with multiple parameters", async () => {
         const { deployer, alice, bob, carol, pfp, pfp2, pfpManager, pfp2Manager, pfps, pfpStore, mix } =
             await setupTest();
 
@@ -440,7 +446,7 @@ describe("PFPStore", () => {
         expect(await pfp2.ownerOf(1)).to.be.equal(pfpStore.address);
         expect(await pfp2.ownerOf(2)).to.be.equal(pfpStore.address);
 
-        await pfpStore.connect(alice).cancelSale([pfp.address, pfp.address, pfp2.address, pfp2.address], [3, 0, 1 ,2]);
+        await pfpStore.connect(alice).cancelSale([pfp.address, pfp.address, pfp2.address, pfp2.address], [3, 0, 1, 2]);
 
         expect(await pfp.ownerOf(0)).to.be.equal(alice.address);
         expect(await pfp.ownerOf(1)).to.be.equal(pfpStore.address);
@@ -449,4 +455,124 @@ describe("PFPStore", () => {
         expect(await pfp2.ownerOf(2)).to.be.equal(alice.address);
     });
 
+    it.only("should be that owner can cancel sales, offers and auctions", async () => {
+        const { deployer, alice, bob, carol, dan, mix, pfp, pfps, pfpManager, pfpStore } = await setupTest();
+
+        await pfp.massMint2(alice.address, 0, 3); //0,1,2
+        await pfp.massMint2(bob.address, 3, 3); //3,4,5
+        await pfp.massMint2(carol.address, 6, 3); //6,7,8
+
+        await pfp.connect(alice).setApprovalForAll(pfpStore.address, true);
+        await pfp.connect(bob).setApprovalForAll(pfpStore.address, true);
+        await pfp.connect(carol).setApprovalForAll(pfpStore.address, true);
+
+        let mixOfAlice = await mix.balanceOf(alice.address);
+
+        expect(await pfp.ownerOf(0)).to.be.equal(alice.address);
+        expect(await pfp.ownerOf(1)).to.be.equal(alice.address);
+        expect((await pfpStore.sales(pfp.address, 0)).seller).to.be.equal(AddressZero);
+        expect((await pfpStore.sales(pfp.address, 1)).seller).to.be.equal(AddressZero);
+        expect(await pfpStore.userSellInfoLength(alice.address)).to.be.equal(0);
+
+        await pfpStore.connect(alice).sell([pfp.address, pfp.address], [0, 1], [10000, 10001]);
+
+        expect(await pfp.ownerOf(0)).to.be.equal(pfpStore.address);
+        expect(await pfp.ownerOf(1)).to.be.equal(pfpStore.address);
+        expect((await pfpStore.sales(pfp.address, 0)).seller).to.be.equal(alice.address);
+        expect((await pfpStore.sales(pfp.address, 1)).seller).to.be.equal(alice.address);
+        expect(await pfpStore.userSellInfoLength(alice.address)).to.be.equal(2);
+
+        await expect(pfpStore.connect(bob).cancelSaleByOwner([pfp.address], [0])).to.be.reverted;
+        await pfpStore.connect(deployer).cancelSaleByOwner([pfp.address], [0]);
+
+        expect(await pfp.ownerOf(0)).to.be.equal(alice.address);
+        expect(await pfp.ownerOf(1)).to.be.equal(pfpStore.address);
+        expect(await mix.balanceOf(alice.address)).to.be.equal(mixOfAlice);
+        expect((await pfpStore.sales(pfp.address, 0)).seller).to.be.equal(AddressZero);
+        expect((await pfpStore.sales(pfp.address, 1)).seller).to.be.equal(alice.address);
+        expect(await pfpStore.userSellInfoLength(alice.address)).to.be.equal(1);
+
+        let mixOfBob = await mix.balanceOf(bob.address);
+        expect(await pfpStore.userOfferInfoLength(bob.address)).to.be.equal(0);
+        expect(await pfpStore.offerCount(pfp.address, 7)).to.be.equal(0);
+        expect(await pfpStore.offerCount(pfp.address, 8)).to.be.equal(0);
+        await expect(pfpStore.offers(pfp.address, 7, 0)).to.be.reverted;
+        await expect(pfpStore.offers(pfp.address, 8, 0)).to.be.reverted;
+
+        await expect(() => pfpStore.connect(bob).makeOffer(pfp.address, 7, 10007)).to.changeTokenBalances(
+            mix,
+            [bob, pfpStore],
+            [-10007, 10007]
+        );
+        await expect(() => pfpStore.connect(bob).makeOffer(pfp.address, 8, 10008)).to.changeTokenBalances(
+            mix,
+            [bob, pfpStore],
+            [-10008, 10008]
+        );
+        expect(await pfpStore.offerCount(pfp.address, 7)).to.be.equal(1);
+        expect(await pfpStore.offerCount(pfp.address, 8)).to.be.equal(1);
+        expect((await pfpStore.offers(pfp.address, 7, 0)).offeror).to.be.equal(bob.address);
+        expect((await pfpStore.offers(pfp.address, 8, 0)).offeror).to.be.equal(bob.address);
+        expect(await pfpStore.userOfferInfoLength(bob.address)).to.be.equal(2);
+
+        await expect(pfpStore.connect(alice).cancelOfferByOwner([pfp.address], [7], [0])).to.be.reverted;
+        await expect(() =>
+            pfpStore.connect(deployer).cancelOfferByOwner([pfp.address], [7], [0])
+        ).to.changeTokenBalances(mix, [bob, pfpStore], [10007, -10007]);
+        expect(await mix.balanceOf(bob.address)).to.be.equal(mixOfBob.sub(10008));
+        expect(await pfpStore.userOfferInfoLength(bob.address)).to.be.equal(1);
+
+        expect(await pfpStore.offerCount(pfp.address, 7)).to.be.equal(1); //offer count never decreases
+        expect(await pfpStore.offerCount(pfp.address, 8)).to.be.equal(1);
+        expect((await pfpStore.offers(pfp.address, 7, 0)).offeror).to.be.equal(AddressZero);
+        expect((await pfpStore.offers(pfp.address, 8, 0)).offeror).to.be.equal(bob.address);
+
+        let mixOfCarol = await mix.balanceOf(carol.address);
+        let mixOfDan = await mix.balanceOf(dan.address);
+
+        expect((await pfpStore.auctions(pfp.address, 8)).seller).to.be.equal(AddressZero);
+        expect(await pfpStore.userAuctionInfoLength(carol.address)).to.be.equal(0);
+
+        expect(await pfp.ownerOf(8)).to.be.equal(carol.address);
+        await pfpStore.connect(carol).createAuction(pfp.address, 8, 10008, 100000);
+        expect(await pfp.ownerOf(8)).to.be.equal(pfpStore.address);
+
+        expect((await pfpStore.auctions(pfp.address, 8)).seller).to.be.equal(carol.address);
+        expect(await pfpStore.userAuctionInfoLength(carol.address)).to.be.equal(1);
+
+        expect(await pfpStore.biddingCount(pfp.address, 8)).to.be.equal(0);
+        await expect(pfpStore.biddings(pfp.address, 8, 0)).to.be.reverted;
+        expect(await pfpStore.userBiddingInfoLength(dan.address)).to.be.equal(0);
+
+        await expect(() => pfpStore.connect(dan).bid(pfp.address, 8, 20008)).to.changeTokenBalances(
+            mix,
+            [dan, pfpStore],
+            [-20008, 20008]
+        );
+
+        expect((await pfpStore.auctions(pfp.address, 8)).seller).to.be.equal(carol.address);
+        expect(await pfpStore.userAuctionInfoLength(carol.address)).to.be.equal(1);
+
+        expect(await pfpStore.biddingCount(pfp.address, 8)).to.be.equal(1);
+        expect((await pfpStore.biddings(pfp.address, 8, 0)).bidder).to.be.equal(dan.address);
+        expect(await pfpStore.userBiddingInfoLength(dan.address)).to.be.equal(1);
+
+        await expect(pfpStore.connect(alice).cancelAuctionByOwner([pfp.address], [8])).to.be.reverted;
+        await expect(() => pfpStore.connect(deployer).cancelAuctionByOwner([pfp.address], [8])).to.changeTokenBalances(
+            mix,
+            [dan, pfpStore],
+            [20008, -20008]
+        );
+
+        expect((await pfpStore.auctions(pfp.address, 8)).seller).to.be.equal(AddressZero);
+        expect(await pfpStore.userAuctionInfoLength(carol.address)).to.be.equal(0);
+
+        expect(await pfpStore.biddingCount(pfp.address, 8)).to.be.equal(0);
+        await expect(pfpStore.biddings(pfp.address, 8, 0)).to.be.reverted;
+        expect(await pfpStore.userBiddingInfoLength(dan.address)).to.be.equal(0);
+
+        expect(await mix.balanceOf(carol.address)).to.be.equal(mixOfCarol);
+        expect(await mix.balanceOf(dan.address)).to.be.equal(mixOfDan);
+        expect(await pfp.ownerOf(8)).to.be.equal(carol.address);
+    });
 });
