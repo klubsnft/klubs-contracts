@@ -31,8 +31,11 @@ contract PFPs is Ownable, IPFPs {
     address[] public addrs;
     mapping(address => bool) public added;
     mapping(address => uint256) public addedBlocks;
+
     mapping(address => address[]) public managers;
     mapping(address => mapping(address => uint256)) public managersIndex;
+    mapping(address => address[]) public managerPFPs;
+    mapping(address => mapping(address => uint256)) public managerPFPsIndex;
 
     function addrCount() view external returns (uint256) {
         return addrs.length;
@@ -42,12 +45,21 @@ contract PFPs is Ownable, IPFPs {
         return managers[addr].length;
     }
 
+    function managerPFPCount(address manager) view external returns (uint256) {
+        return managerPFPs[manager].length;
+    }
+
     function add(address addr, address manager) private {
         require(added[addr] != true);
+
         addrs.push(addr);
         added[addr] = true;
         addedBlocks[addr] = block.number;
+
         managers[addr].push(manager);
+        managerPFPsIndex[manager][addr] = managerPFPs[manager].length;
+        managerPFPs[manager].push(addr);
+
         emit Add(addr, manager);
     }
 
@@ -83,11 +95,14 @@ contract PFPs is Ownable, IPFPs {
         require(existsManager(addr, manager) != true);
         managersIndex[addr][manager] = managers[addr].length;
         managers[addr].push(manager);
+        managerPFPsIndex[manager][addr] = managerPFPs[manager].length;
+        managerPFPs[manager].push(addr);
         emit AddManager(addr, manager);
     }
 
     function removeManager(address addr, address manager) onlyManager(addr) external {
         require(manager != msg.sender && existsManager(addr, manager) == true);
+
         uint256 lastIndex = managers[addr].length.sub(1);
         uint256 index = managersIndex[addr][manager];
         if (index != lastIndex) {
@@ -96,6 +111,16 @@ contract PFPs is Ownable, IPFPs {
             managersIndex[addr][last] = index;
         }
         managers[addr].length--;
+
+        lastIndex = managerPFPs[manager].length.sub(1);
+        index = managerPFPsIndex[manager][addr];
+        if (index != lastIndex) {
+            address last = managerPFPs[manager][lastIndex];
+            managerPFPs[manager][index] = last;
+            managerPFPsIndex[manager][last] = index;
+        }
+        managerPFPs[manager].length--;
+
         emit RemoveManager(addr, manager);
     }
 

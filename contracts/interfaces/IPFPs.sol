@@ -26,6 +26,8 @@ interface IPFPs {
 
     function managerCount(address addr) view external returns (uint256);
     function managers(address addr, uint256 index) view external returns (address);
+    function managerPFPCount(address manager) view external returns (uint256);
+    function managerPFPs(address manager, uint256 index) view external returns (address);
 
     function addByPFPOwner(address addr) external;
     function addByMinter(address addr) external;
