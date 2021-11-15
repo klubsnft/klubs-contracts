@@ -104,6 +104,7 @@ contract PFPs is Ownable, IPFPs {
         require(manager != msg.sender && existsManager(addr, manager) == true);
 
         uint256 lastIndex = managers[addr].length.sub(1);
+        require(lastIndex != 0);
         uint256 index = managersIndex[addr][manager];
         if (index != lastIndex) {
             address last = managers[addr][lastIndex];
@@ -111,6 +112,7 @@ contract PFPs is Ownable, IPFPs {
             managersIndex[addr][last] = index;
         }
         managers[addr].length--;
+        delete managersIndex[addr][manager];
 
         lastIndex = managerPFPs[manager].length.sub(1);
         index = managerPFPsIndex[manager][addr];
@@ -120,6 +122,7 @@ contract PFPs is Ownable, IPFPs {
             managerPFPsIndex[manager][last] = index;
         }
         managerPFPs[manager].length--;
+        delete managerPFPsIndex[manager][addr];
 
         emit RemoveManager(addr, manager);
     }
