@@ -130,12 +130,15 @@ contract PFPs is Ownable, IPFPs {
     mapping(address => bool) public enumerables;
     mapping(address => uint256) public totalSupplies;
 
-    function setEnumerable(address addr, bool enumerable) onlyManager(addr) external {
+    function setEnumerable(address addr, bool enumerable) onlyManager(addr) public {
         enumerables[addr] = enumerable;
         emit SetEnumerable(addr, enumerable);
     }
 
     function setTotalSupply(address addr, uint256 totalSupply) onlyManager(addr) external {
+        if (enumerables[addr] == true) {
+            setEnumerable(addr, false);
+        }
         totalSupplies[addr] = totalSupply;
         emit SetTotalSupply(addr, totalSupply);
     }
