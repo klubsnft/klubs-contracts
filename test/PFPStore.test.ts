@@ -367,7 +367,7 @@ describe("PFPStore", () => {
         const { deployer, alice, bob, carol, pfp, pfp2, pfpManager, pfp2Manager, pfps, pfpStore, mix } =
             await setupTest();
 
-            await pfpStore.setFee(25);
+        await pfpStore.setFee(25);
         await pfps.connect(pfpManager).setRoyalty(pfp.address, pfpManager.address, 200);
         await pfps.connect(pfp2Manager).setRoyalty(pfp2.address, pfp2Manager.address, 1);
 
