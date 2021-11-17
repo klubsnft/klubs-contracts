@@ -536,7 +536,7 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 price;
     }
 
-    uint256 public fee = 25;
+    uint256 public fee = 250;
     address public feeReceiver;
     uint256 public auctionExtensionInterval = 300;
 
