@@ -68,6 +68,38 @@ contract PFPStore is Ownable, IPFPStore {
         _;
     }
 
+    function removeSale(address addr, uint256 id) private {
+        delete sales[addr][id];
+
+        if (checkSelling(addr, id) == true) {
+            uint256 lastIndex = onSalesCount(addr).sub(1);
+            uint256 index = onSalesIndex[addr][id];
+            if (index != lastIndex) {
+                uint256 last = onSales[addr][lastIndex];
+                onSales[addr][index] = last;
+                onSalesIndex[addr][last] = index;
+            }
+            onSales[addr].length--;
+            delete onSalesIndex[addr][id];
+        }
+    }
+
+    function removeAuction(address addr, uint256 id) private {
+        delete auctions[addr][id];
+
+        if (checkAuction(addr, id) == true) {
+            uint256 lastIndex = onAuctionsCount(addr).sub(1);
+            uint256 index = onAuctionsIndex[addr][id];
+            if (index != lastIndex) {
+                uint256 last = onAuctions[addr][lastIndex];
+                onAuctions[addr][index] = last;
+                onAuctionsIndex[addr][last] = index;
+            }
+            onAuctions[addr].length--;
+            delete onAuctionsIndex[addr][id];
+        }
+    }
+
     function distributeReward(
         address addr,
         uint256 id,
@@ -83,8 +115,8 @@ contract PFPStore is Ownable, IPFPStore {
 
         mix.transfer(to, amount.sub(_fee).sub(_royalty));
 
-        delete sales[addr][id];
-        delete auctions[addr][id];
+        removeSale(addr, id);
+        removeAuction(addr, id);
         delete biddings[addr][id];
     }
 
@@ -93,14 +125,20 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 price;
     }
     mapping(address => mapping(uint256 => Sale)) public sales; //sales[addr][id]
+    mapping(address => uint256[]) public onSales;
+    mapping(address => mapping(uint256 => uint256)) public onSalesIndex;
     mapping(address => PFPInfo[]) public userSellInfo; //userSellInfo[seller]
     mapping(address => mapping(uint256 => uint256)) private userSellIndex; //userSellIndex[addr][id]
+
+    function onSalesCount(address addr) public view returns (uint256) {
+        return onSales[addr].length;
+    }
 
     function userSellInfoLength(address seller) public view returns (uint256) {
         return userSellInfo[seller].length;
     }
 
-    function checkSelling(address addr, uint256 id) external view returns (bool) {
+    function checkSelling(address addr, uint256 id) public view returns (bool) {
         return sales[addr][id].seller != address(0);
     }
 
@@ -119,6 +157,8 @@ contract PFPStore is Ownable, IPFPStore {
             nft.transferFrom(msg.sender, address(this), ids[i]);
 
             sales[addrs[i]][ids[i]] = Sale({seller: msg.sender, price: prices[i]});
+            onSalesIndex[addrs[i]][ids[i]] = onSales[addrs[i]].length;
+            onSales[addrs[i]].push(ids[i]);
 
             uint256 lastIndex = userSellInfoLength(msg.sender);
             userSellInfo[msg.sender].push(PFPInfo({pfp: addrs[i], id: ids[i], price: prices[i]}));
@@ -154,7 +194,7 @@ contract PFPStore is Ownable, IPFPStore {
             require(seller == msg.sender);
 
             IKIP17(addrs[i]).transferFrom(address(this), seller, ids[i]);
-            delete sales[addrs[i]][ids[i]];
+            removeSale(addrs[i], ids[i]);
             removeUserSell(seller, addrs[i], ids[i]);
 
             emit CancelSale(addrs[i], ids[i], msg.sender);
@@ -278,14 +318,20 @@ contract PFPStore is Ownable, IPFPStore {
         uint256 endBlock;
     }
     mapping(address => mapping(uint256 => AuctionInfo)) public auctions; //auctions[addr][id]
+    mapping(address => uint256[]) public onAuctions;
+    mapping(address => mapping(uint256 => uint256)) public onAuctionsIndex;
     mapping(address => PFPInfo[]) public userAuctionInfo; //userAuctionInfo[seller]
     mapping(address => mapping(uint256 => uint256)) private userAuctionIndex; //userAuctionIndex[addr][id]
+
+    function onAuctionsCount(address addr) public view returns (uint256) {
+        return onAuctions[addr].length;
+    }
 
     function userAuctionInfoLength(address seller) public view returns (uint256) {
         return userAuctionInfo[seller].length;
     }
 
-    function checkAuction(address addr, uint256 id) external view returns (bool) {
+    function checkAuction(address addr, uint256 id) public view returns (bool) {
         return auctions[addr][id].seller != address(0);
     }
 
@@ -301,6 +347,8 @@ contract PFPStore is Ownable, IPFPStore {
         nft.transferFrom(msg.sender, address(this), id);
 
         auctions[addr][id] = AuctionInfo({seller: msg.sender, startPrice: startPrice, endBlock: endBlock});
+        onAuctionsIndex[addr][id] = onAuctions[addr].length;
+        onAuctions[addr].push(id);
 
         uint256 lastIndex = userAuctionInfoLength(msg.sender);
         userAuctionInfo[msg.sender].push(PFPInfo({pfp: addr, id: id, price: startPrice}));
@@ -336,7 +384,7 @@ contract PFPStore is Ownable, IPFPStore {
 
         IKIP17(addr).transferFrom(address(this), seller, id);
 
-        delete auctions[addr][id];
+        removeAuction(addr, id);
         removeUserAuction(seller, addr, id);
 
         emit CancelAuction(addr, id, msg.sender);
@@ -437,7 +485,7 @@ contract PFPStore is Ownable, IPFPStore {
             address seller = sales[addrs[i]][ids[i]].seller;
 
             IKIP17(addrs[i]).transferFrom(address(this), seller, ids[i]);
-            delete sales[addrs[i]][ids[i]];
+            removeSale(addrs[i], ids[i]);
             removeUserSell(seller, addrs[i], ids[i]);
 
             emit CancelSale(addrs[i], ids[i], seller);
@@ -479,7 +527,7 @@ contract PFPStore is Ownable, IPFPStore {
 
             IKIP17(addrs[i]).transferFrom(address(this), _auction.seller, ids[i]);
 
-            delete auctions[addrs[i]][ids[i]];
+            removeAuction(addrs[i], ids[i]);
             removeUserAuction(_auction.seller, addrs[i], ids[i]);
 
             emit CancelAuction(addrs[i], ids[i], _auction.seller);

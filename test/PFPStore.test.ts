@@ -71,7 +71,7 @@ describe("PFPStore", () => {
         await expect(pfpStore.connect(alice).setFee(100)).to.be.reverted;
         await expect(pfpStore.setFee(9000)).to.be.reverted;
 
-        expect(await pfpStore.fee()).to.be.equal(25);
+        expect(await pfpStore.fee()).to.be.equal(250);
         await pfpStore.setFee(8999);
         expect(await pfpStore.fee()).to.be.equal(8999);
 
@@ -367,6 +367,7 @@ describe("PFPStore", () => {
         const { deployer, alice, bob, carol, pfp, pfp2, pfpManager, pfp2Manager, pfps, pfpStore, mix } =
             await setupTest();
 
+            await pfpStore.setFee(25);
         await pfps.connect(pfpManager).setRoyalty(pfp.address, pfpManager.address, 200);
         await pfps.connect(pfp2Manager).setRoyalty(pfp2.address, pfp2Manager.address, 1);
 
@@ -579,6 +580,7 @@ describe("PFPStore", () => {
     it("should be that offers still alive even if the pfp token is sold through sale or auction or transferred to another", async () => {
         const { deployer, alice, bob, carol, dan, mix, pfp, pfpStore } = await setupTest();
 
+        await pfpStore.setFee(25);
         await pfp.massMint(alice.address, 10);
 
         await expect(pfpStore.offers(pfp.address, 1, 0)).to.be.reverted;
@@ -1107,21 +1109,21 @@ describe("PFPStore", () => {
         await pfpStore.connect(alice).bid(pfp.address, 4, 20000);
         await pfpStore.connect(carol).bid(pfp.address, 3, 20001);
         await pfpStore.connect(carol).bid(pfp.address, 1, 20002);
-        await pfpStore.connect(bob).bid(pfp.address,   0, 20003);
+        await pfpStore.connect(bob).bid(pfp.address, 0, 20003);
         await pfpStore.connect(alice).bid(pfp.address, 1, 20004);
         await pfpStore.connect(carol).bid(pfp.address, 5, 20005);
         await pfpStore.connect(carol).bid(pfp.address, 6, 20006);
-        await pfpStore.connect(bob).bid(pfp.address,   5, 20007);
-        await pfpStore.connect(bob).bid(pfp.address,   9, 20008);
+        await pfpStore.connect(bob).bid(pfp.address, 5, 20007);
+        await pfpStore.connect(bob).bid(pfp.address, 9, 20008);
         await pfpStore.connect(alice).bid(pfp.address, 6, 20009);
-        await pfpStore.connect(bob).bid(pfp.address,   8, 20010);
+        await pfpStore.connect(bob).bid(pfp.address, 8, 20010);
         await pfpStore.connect(alice).bid(pfp.address, 0, 20011);
         await pfpStore.connect(alice).bid(pfp.address, 3, 20012);
         await pfpStore.connect(alice).bid(pfp.address, 9, 20013);
         await pfpStore.connect(alice).bid(pfp.address, 7, 20014);
-        await pfpStore.connect(bob).bid(pfp.address,   2, 20015);
-        await pfpStore.connect(bob).bid(pfp.address,   1, 20016);
-        await pfpStore.connect(bob).bid(pfp.address,   6, 20017);
+        await pfpStore.connect(bob).bid(pfp.address, 2, 20015);
+        await pfpStore.connect(bob).bid(pfp.address, 1, 20016);
+        await pfpStore.connect(bob).bid(pfp.address, 6, 20017);
 
         expect(await pfpStore.userBiddingInfoLength(alice.address)).to.be.equal(5);
         expect(await pfpStore.userBiddingInfoLength(bob.address)).to.be.equal(5);

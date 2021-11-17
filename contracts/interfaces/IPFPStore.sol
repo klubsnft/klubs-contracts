@@ -29,6 +29,9 @@ interface IPFPStore {
     function userSellInfoLength(address seller) external view returns (uint256);
     function checkSelling(address addr, uint256 id) external view returns (bool);
 
+    function onSalesCount(address addr) view external returns (uint256);
+    function onSales(address addr, uint256 index) view external returns (uint256);
+
     function sell(address[] calldata addrs, uint256[] calldata ids, uint256[] calldata prices) external;
     function cancelSale(address[] calldata addrs, uint256[] calldata ids) external;
     function buy(address[] calldata addrs, uint256[] calldata ids) external;
@@ -46,6 +49,9 @@ interface IPFPStore {
     function userAuctionInfo(address seller, uint256 index) external view returns (address pfp, uint256 id, uint256 startPrice);
     function userAuctionInfoLength(address seller) external view returns (uint256);
     function checkAuction(address addr, uint256 id) external view returns (bool);
+
+    function onAuctionsCount(address addr) view external returns (uint256);
+    function onAuctions(address addr, uint256 index) view external returns (uint256);
 
     function createAuction(address addr, uint256 id, uint256 startPrice, uint256 endBlock) external;
     function cancelAuction(address addr, uint256 id) external;
