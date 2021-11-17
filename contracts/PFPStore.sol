@@ -69,8 +69,6 @@ contract PFPStore is Ownable, IPFPStore {
     }
 
     function removeSale(address addr, uint256 id) private {
-        delete sales[addr][id];
-
         if (checkSelling(addr, id) == true) {
             uint256 lastIndex = onSalesCount(addr).sub(1);
             uint256 index = onSalesIndex[addr][id];
@@ -82,11 +80,10 @@ contract PFPStore is Ownable, IPFPStore {
             onSales[addr].length--;
             delete onSalesIndex[addr][id];
         }
+        delete sales[addr][id];
     }
 
     function removeAuction(address addr, uint256 id) private {
-        delete auctions[addr][id];
-
         if (checkAuction(addr, id) == true) {
             uint256 lastIndex = onAuctionsCount(addr).sub(1);
             uint256 index = onAuctionsIndex[addr][id];
@@ -98,6 +95,7 @@ contract PFPStore is Ownable, IPFPStore {
             onAuctions[addr].length--;
             delete onAuctionsIndex[addr][id];
         }
+        delete auctions[addr][id];
     }
 
     function distributeReward(
