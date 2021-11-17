@@ -913,9 +913,12 @@ interface IPFPs {
     function addrCount() view external returns (uint256);
     function addrs(uint256 index) view external returns (address);
     function added(address addr) view external returns (bool);
+    function addedBlocks(address addr) view external returns (uint256);
 
     function managerCount(address addr) view external returns (uint256);
     function managers(address addr, uint256 index) view external returns (address);
+    function managerPFPCount(address manager) view external returns (uint256);
+    function managerPFPs(address manager, uint256 index) view external returns (address);
 
     function addByPFPOwner(address addr) external;
     function addByMinter(address addr) external;
@@ -935,6 +938,8 @@ interface IPFPs {
 
     function extras(address addr) view external returns (string memory);
     function setExtra(address addr, string calldata extra) external;
+
+    function banned(address addr) view external returns (bool);
 }
 
 contract PFPs is Ownable, IPFPs {
@@ -960,8 +965,12 @@ contract PFPs is Ownable, IPFPs {
 
     address[] public addrs;
     mapping(address => bool) public added;
+    mapping(address => uint256) public addedBlocks;
+
     mapping(address => address[]) public managers;
     mapping(address => mapping(address => uint256)) public managersIndex;
+    mapping(address => address[]) public managerPFPs;
+    mapping(address => mapping(address => uint256)) public managerPFPsIndex;
 
     function addrCount() view external returns (uint256) {
         return addrs.length;
@@ -971,11 +980,21 @@ contract PFPs is Ownable, IPFPs {
         return managers[addr].length;
     }
 
+    function managerPFPCount(address manager) view external returns (uint256) {
+        return managerPFPs[manager].length;
+    }
+
     function add(address addr, address manager) private {
         require(added[addr] != true);
+
         addrs.push(addr);
         added[addr] = true;
+        addedBlocks[addr] = block.number;
+
         managers[addr].push(manager);
+        managerPFPsIndex[manager][addr] = managerPFPs[manager].length;
+        managerPFPs[manager].push(addr);
+
         emit Add(addr, manager);
     }
 
@@ -1011,12 +1030,16 @@ contract PFPs is Ownable, IPFPs {
         require(existsManager(addr, manager) != true);
         managersIndex[addr][manager] = managers[addr].length;
         managers[addr].push(manager);
+        managerPFPsIndex[manager][addr] = managerPFPs[manager].length;
+        managerPFPs[manager].push(addr);
         emit AddManager(addr, manager);
     }
 
     function removeManager(address addr, address manager) onlyManager(addr) external {
         require(manager != msg.sender && existsManager(addr, manager) == true);
+
         uint256 lastIndex = managers[addr].length.sub(1);
+        require(lastIndex != 0);
         uint256 index = managersIndex[addr][manager];
         if (index != lastIndex) {
             address last = managers[addr][lastIndex];
@@ -1024,18 +1047,33 @@ contract PFPs is Ownable, IPFPs {
             managersIndex[addr][last] = index;
         }
         managers[addr].length--;
+        delete managersIndex[addr][manager];
+
+        lastIndex = managerPFPs[manager].length.sub(1);
+        index = managerPFPsIndex[manager][addr];
+        if (index != lastIndex) {
+            address last = managerPFPs[manager][lastIndex];
+            managerPFPs[manager][index] = last;
+            managerPFPsIndex[manager][last] = index;
+        }
+        managerPFPs[manager].length--;
+        delete managerPFPsIndex[manager][addr];
+
         emit RemoveManager(addr, manager);
     }
 
     mapping(address => bool) public enumerables;
     mapping(address => uint256) public totalSupplies;
 
-    function setEnumerable(address addr, bool enumerable) onlyManager(addr) external {
+    function setEnumerable(address addr, bool enumerable) onlyManager(addr) public {
         enumerables[addr] = enumerable;
         emit SetEnumerable(addr, enumerable);
     }
 
     function setTotalSupply(address addr, uint256 totalSupply) onlyManager(addr) external {
+        if (enumerables[addr] == true) {
+            setEnumerable(addr, false);
+        }
         totalSupplies[addr] = totalSupply;
         emit SetTotalSupply(addr, totalSupply);
     }
