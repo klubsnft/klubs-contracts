@@ -19,8 +19,8 @@ interface IPFPStoreV2 {
     event CancelOfferByOwner(address indexed addr, uint256 indexed id, uint256 indexed offerId);
     event CancelAuctionByOwner(address indexed addr, uint256 indexed id);
 
-    event Ban(address indexed addr);
-    event Unban(address indexed addr);
+    event Ban(address indexed user);
+    event Unban(address indexed user);
 
     function auctionExtensionInterval() external view returns (uint256);
     function isBanned(address user) external view returns (bool);

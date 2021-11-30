@@ -513,7 +513,6 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
         for (uint256 i = 0; i < addrs.length; i++) {
             address seller = sales[addrs[i]][ids[i]].seller;
 
-            IKIP17(addrs[i]).transferFrom(address(this), seller, ids[i]);
             removeSale(addrs[i], ids[i]);
             removeUserSell(seller, addrs[i], ids[i]);
 

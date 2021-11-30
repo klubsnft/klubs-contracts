@@ -10,15 +10,21 @@ import "./interfaces/IArtists.sol";
 contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17Pausable {
     using SafeMath for uint256;
 
+    event SetBaseURI(string baseURI);
+    event Ban(uint256 indexed id);
+    event Unban(uint256 indexed id);
+
     IArtists public artists;
-    string public baseURI = "https://api.klu.bs/arts/";
 
     constructor(IArtists _artists) public {
         artists = _artists;
     }
 
+    string public baseURI = "https://api.klu.bs/arts/";
+
     function setBaseURI(string calldata _baseURI) external onlyOwner {
         baseURI = _baseURI;
+        emit SetBaseURI(_baseURI);
     }
 
     function tokenURI(uint256 tokenId) public view returns (string memory) {
@@ -52,7 +58,27 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
         _;
     }
 
+    mapping(uint256 => address) public artToArtist;
+
     function mint() public artistWhitelist {
-        _mint(msg.sender, totalSupply());
+        uint256 id = totalSupply();
+        _mint(msg.sender, id);
+        artToArtist[id] = msg.sender;
+    }
+
+    mapping(uint256 => bool) private _banned;
+
+    function ban(uint256 id) onlyOwner external {
+        _banned[id] = true;
+        emit Ban(id);
+    }
+
+    function unban(uint256 id) onlyOwner external {
+        _banned[id] = false;
+        emit Unban(id);
+    }
+
+    function isBanned(uint256 id) external view returns (bool) {
+        return _banned[id] || artists.banned(artToArtist[id]);
     }
 }
