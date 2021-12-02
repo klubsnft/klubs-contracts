@@ -59,11 +59,17 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
     }
 
     mapping(uint256 => address) public artToArtist;
+    mapping(address => uint256[]) public artistArts;
 
     function mint() public artistWhitelist {
         uint256 id = totalSupply();
         _mint(msg.sender, id);
         artToArtist[id] = msg.sender;
+        artistArts[msg.sender].push(id);
+    }
+
+    function artistArtCount(address artist) external view returns (uint256) {
+        return artistArts[artist].length;
     }
 
     mapping(uint256 => bool) private _banned;
