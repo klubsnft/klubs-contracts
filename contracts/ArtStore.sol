@@ -119,7 +119,7 @@ contract ArtStore is Ownable, IArtStore {
         if (_fee > 0) mix.transfer(feeReceiver, _fee);
 
         address artist = arts.artToArtist(id);
-        uint256 royalty = artists.royalties(artist);
+        uint256 royalty = arts.royalties(id);
         uint256 _royalty = amount.mul(royalty).div(1e4);
         if (_royalty > 0) mix.transfer(artist, _royalty);
 

@@ -22,14 +22,6 @@ contract Artists is Ownable, IArtists {
 
         emit Add(msg.sender);
     }
-
-    mapping(address => uint256) public royalties;
-
-    function setRoyalty(uint256 royalty) external {
-        require(royalty <= 1e3); // max royalty is 10%
-        royalties[msg.sender] = royalty;
-        emit SetRoyalty(msg.sender, royalty);
-    }
     
     mapping(address => string) public extras;
 

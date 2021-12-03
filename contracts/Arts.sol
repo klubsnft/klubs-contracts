@@ -11,6 +11,9 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
     using SafeMath for uint256;
 
     event SetBaseURI(string baseURI);
+    event SetRoyalty(uint256 indexed id, uint256 royalty);
+    event MileageOn(uint256 indexed id);
+    event MileageOff(uint256 indexed id);
     event Ban(uint256 indexed id);
     event Unban(uint256 indexed id);
 
@@ -70,6 +73,31 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
 
     function artistArtCount(address artist) external view returns (uint256) {
         return artistArts[artist].length;
+    }
+
+    modifier onlyArtist(uint256 id) {
+        require(artToArtist[id] == msg.sender);
+        _;
+    }
+
+    mapping(uint256 => uint256) public royalties;
+
+    function setRoyalty(uint256 id, uint256 royalty) onlyArtist(id) external {
+        require(royalty <= 1e3); // max royalty is 10%
+        royalties[id] = royalty;
+        emit SetRoyalty(id, royalty);
+    }
+
+    mapping(uint256 => bool) public mileageMode;
+
+    function mileageOn(uint256 id) onlyArtist(id) external {
+        mileageMode[id] = true;
+        emit MileageOn(id);
+    }
+
+    function mileageOff(uint256 id) onlyArtist(id) external {
+        mileageMode[id] = false;
+        emit MileageOff(id);
     }
 
     mapping(uint256 => bool) private _banned;
