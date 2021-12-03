@@ -30,6 +30,18 @@ contract Artists is Ownable, IArtists {
         emit SetExtra(msg.sender, extra);
     }
 
+    mapping(address => bool) public onlyKlubsMembership;
+
+    function joinOnlyKlubsMembership(address addr) onlyOwner external {
+        onlyKlubsMembership[addr] = true;
+        emit JoinOnlyKlubsMembership(addr);
+    }
+
+    function exitOnlyKlubsMembership(address addr) onlyOwner external {
+        onlyKlubsMembership[addr] = false;
+        emit ExitOnlyKlubsMembership(addr);
+    }
+
     mapping(address => bool) public banned;
 
     function ban(address artist) onlyOwner external {

@@ -4,6 +4,8 @@ interface IArtists {
 
     event Add(address indexed artist);
     event SetExtra(address indexed artist, string extra);
+    event JoinOnlyKlubsMembership(address indexed artist);
+    event ExitOnlyKlubsMembership(address indexed artist);
     event Ban(address indexed artist);
     event Unban(address indexed artist);
 
@@ -17,5 +19,6 @@ interface IArtists {
     function extras(address artist) view external returns (string memory);
     function setExtra(string calldata extra) external;
 
+    function onlyKlubsMembership(address artist) view external returns (bool);
     function banned(address artist) view external returns (bool);
 }
