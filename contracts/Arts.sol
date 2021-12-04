@@ -10,6 +10,7 @@ import "./interfaces/IArtists.sol";
 contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17Pausable {
     using SafeMath for uint256;
 
+    event SetArtists(IArtists artists);
     event SetBaseURI(string baseURI);
     event SetExceptionalRoyalty(uint256 indexed id, uint256 royalty);
     event MileageOn(uint256 indexed id);
@@ -21,6 +22,12 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
 
     constructor(IArtists _artists) public {
         artists = _artists;
+        emit SetArtists(_artists);
+    }
+
+    function setArtists(IArtists _newArtists) external onlyOwner {
+        artists = _newArtists;
+        emit SetArtists(_newArtists);
     }
 
     string public baseURI = "https://api.klu.bs/arts/";
