@@ -14,7 +14,7 @@ contract Artists is Ownable, IArtists {
     }
 
     function add() external {
-        require(added[msg.sender] != true);
+        require(!added[msg.sender]);
 
         artists.push(msg.sender);
         added[msg.sender] = true;
