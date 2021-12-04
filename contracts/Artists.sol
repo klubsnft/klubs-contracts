@@ -23,6 +23,14 @@ contract Artists is Ownable, IArtists {
         emit Add(msg.sender);
     }
     
+    mapping(address => uint256) public baseRoyalty;
+
+    function setBaseRoyalty(uint256 _baseRoyalty) external {
+        require(_baseRoyalty <= 1e3); // max royalty is 10%
+        baseRoyalty[msg.sender] = _baseRoyalty;
+        emit SetBaseRoyalty(msg.sender, _baseRoyalty);
+    }
+
     mapping(address => string) public extras;
 
     function setExtra(string calldata extra) external {
