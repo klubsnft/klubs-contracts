@@ -11,7 +11,7 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
     using SafeMath for uint256;
 
     event SetBaseURI(string baseURI);
-    event SetRoyalty(uint256 indexed id, uint256 royalty);
+    event SetExceptionalRoyalty(uint256 indexed id, uint256 royalty);
     event MileageOn(uint256 indexed id);
     event MileageOff(uint256 indexed id);
     event Ban(uint256 indexed id);
@@ -80,12 +80,24 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
         _;
     }
 
-    mapping(uint256 => uint256) public royalties;
+    mapping(uint256 => uint256) private _exceptionalRoyalties;
 
-    function setRoyalty(uint256 id, uint256 royalty) onlyArtist(id) external {
-        require(royalty <= 1e3); // max royalty is 10%
-        royalties[id] = royalty;
-        emit SetRoyalty(id, royalty);
+    function setExceptionalRoyalties(uint256[] calldata ids, uint256[] calldata royalties) external {
+        require(ids.length == royalties.length);
+        for(uint256 i = 0; i < ids.length; i++) {
+            require(artToArtist[ids[i]] == msg.sender);
+            require(royalties[i] <= 1e3 || royalties[i] == uint256(-1)); // max royalty is 10%
+            _exceptionalRoyalties[ids[i]] = royalties[i];
+            emit SetExceptionalRoyalty(ids[i], royalties[i]);
+        }
+    }
+
+    function royalties(uint256 id) external view returns (uint256) {
+        if(_exceptionalRoyalties[id] == 0) {
+            return artists.baseRoyalty(artToArtist[id]);
+        } else {
+            return _exceptionalRoyalties[id] == uint256(-1) ? 0 : _exceptionalRoyalties[id];
+        }
     }
 
     mapping(uint256 => bool) public mileageMode;
