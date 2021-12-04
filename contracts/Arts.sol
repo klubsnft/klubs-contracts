@@ -87,6 +87,11 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
         _;
     }
 
+    /** 
+        _exceptionalRoyalties == 0 : follow baseRoyalty
+        _exceptionalRoyalties == uint256(-1) : not follow baseRoyalty. use exceptioanlRoyalty and it is 0
+        0 < _exceptionalRoyalties <= 1e3 : not follow baseRoyalty. use exceptioanlRoyalty and it is same with its value
+    */
     mapping(uint256 => uint256) private _exceptionalRoyalties;
 
     function setExceptionalRoyalties(uint256[] calldata ids, uint256[] calldata royalties) external {
