@@ -291,7 +291,7 @@ contract ArtStore is Ownable, IArtStore {
             arts.safeTransferFrom(sale.seller, msg.sender, ids[i]);
 
             mix.transferFrom(msg.sender, address(this), sale.price.sub(mileages[i]));
-            mileage.use(msg.sender, mileages[i]);
+            if(mileages[i] > 0) mileage.use(msg.sender, mileages[i]);
             distributeReward(ids[i], msg.sender, sale.seller, sale.price);
             removeUserSell(sale.seller, ids[i]);
 
@@ -335,7 +335,7 @@ contract ArtStore is Ownable, IArtStore {
         os.push(OfferInfo({offeror: msg.sender, price: price, mileage: _mileage}));
 
         mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
-        mileage.use(msg.sender, _mileage);
+        if(_mileage > 0) mileage.use(msg.sender, _mileage);
 
         uint256 lastIndex = userOfferInfoLength(msg.sender);
         userOfferInfo[msg.sender].push(ArtInfo({id: id, price: price}));
@@ -372,8 +372,10 @@ contract ArtStore is Ownable, IArtStore {
         delete os[offerId];
         removeUserOffer(msg.sender, id);
         mix.transfer(msg.sender, _offer.price.sub(_offer.mileage));
-        mix.approve(address(mileage), _offer.mileage);
-        mileage.charge(msg.sender, _offer.mileage);
+        if(_offer.mileage > 0) {
+            mix.approve(address(mileage), _offer.mileage);
+            mileage.charge(msg.sender, _offer.mileage);
+        }
 
         emit CancelOffer(id, offerId, msg.sender);
     }
@@ -506,15 +508,17 @@ contract ArtStore is Ownable, IArtStore {
             Bidding memory bestBidding = bs[biddingId - 1];
             require(bestBidding.price < price);
             mix.transfer(bestBidding.bidder, bestBidding.price.sub(bestBidding.mileage));
-            mix.approve(address(mileage), bestBidding.mileage);
-            mileage.charge(bestBidding.bidder, bestBidding.mileage);
+            if(bestBidding.mileage > 0) {
+                mix.approve(address(mileage), bestBidding.mileage);
+                mileage.charge(bestBidding.bidder, bestBidding.mileage);
+            }
             removeUserBidding(bestBidding.bidder, id);
         }
 
         bs.push(Bidding({bidder: msg.sender, price: price, mileage: _mileage}));
 
         mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
-        mileage.use(msg.sender, _mileage);
+        if(_mileage > 0) mileage.use(msg.sender, _mileage);
 
         uint256 lastIndex = userBiddingInfoLength(msg.sender);
         userBiddingInfo[msg.sender].push(ArtInfo({id: id, price: price}));
@@ -586,8 +590,10 @@ contract ArtStore is Ownable, IArtStore {
             delete os[offerIds[i]];
             removeUserOffer(_offer.offeror, ids[i]);
             mix.transfer(_offer.offeror, _offer.price.sub(_offer.mileage));
-            mix.approve(address(mileage), _offer.mileage);
-            mileage.charge(_offer.offeror, _offer.mileage);
+            if(_offer.mileage > 0) {
+                mix.approve(address(mileage), _offer.mileage);
+                mileage.charge(_offer.offeror, _offer.mileage);
+            }
 
             emit CancelOffer(ids[i], offerIds[i], _offer.offeror);
             emit CancelOfferByOwner(ids[i], offerIds[i]);
@@ -602,8 +608,10 @@ contract ArtStore is Ownable, IArtStore {
             if (bs.length > 0) {
                 Bidding memory bestBidding = bs[bs.length - 1];
                 mix.transfer(bestBidding.bidder, bestBidding.price.sub(bestBidding.mileage));
-                mix.approve(address(mileage), bestBidding.mileage);
-                mileage.charge(bestBidding.bidder, bestBidding.mileage);
+                if(bestBidding.mileage > 0) {
+                    mix.approve(address(mileage), bestBidding.mileage);
+                    mileage.charge(bestBidding.bidder, bestBidding.mileage);
+                }
                 removeUserBidding(bestBidding.bidder, ids[i]);
                 delete biddings[ids[i]];
             }
