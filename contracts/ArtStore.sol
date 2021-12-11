@@ -507,7 +507,7 @@ contract ArtStore is Ownable, IArtStore {
             require(bestBidding.price < price);
             mix.transfer(bestBidding.bidder, bestBidding.price.sub(bestBidding.mileage));
             mix.approve(address(mileage), bestBidding.mileage);
-            mileage.charge(msg.sender, bestBidding.mileage);
+            mileage.charge(bestBidding.bidder, bestBidding.mileage);
             removeUserBidding(bestBidding.bidder, id);
         }
 
