@@ -1387,11 +1387,14 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
     mapping(uint256 => address) public artToArtist;
     mapping(address => uint256[]) public artistArts;
 
+    uint256 public mintCount;
+
     function mint() public artistWhitelist {
-        uint256 id = totalSupply();
+        uint256 id = mintCount;
         _mint(msg.sender, id);
         artToArtist[id] = msg.sender;
         artistArts[msg.sender].push(id);
+        mintCount = mintCount.add(1);
     }
 
     function artistArtCount(address artist) external view returns (uint256) {
@@ -1404,27 +1407,27 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
     }
 
     /** 
-        _exceptionalRoyalties == 0 : follow baseRoyalty
-        _exceptionalRoyalties == uint256(-1) : not follow baseRoyalty. use exceptioanlRoyalty and it is 0
-        0 < _exceptionalRoyalties <= 1e3 : not follow baseRoyalty. use exceptioanlRoyalty and it is same with its value
+        exceptionalRoyalties == 0 : follow baseRoyalty
+        exceptionalRoyalties == uint256(-1) : not follow baseRoyalty. use exceptioanlRoyalty and it is 0
+        0 < exceptionalRoyalties <= 1e3 : not follow baseRoyalty. use exceptioanlRoyalty and it is same with its value
     */
-    mapping(uint256 => uint256) private _exceptionalRoyalties;
+    mapping(uint256 => uint256) public exceptionalRoyalties;
 
     function setExceptionalRoyalties(uint256[] calldata ids, uint256[] calldata royalties) external {
         require(ids.length == royalties.length);
         for(uint256 i = 0; i < ids.length; i++) {
             require(artToArtist[ids[i]] == msg.sender);
             require(royalties[i] <= 1e3 || royalties[i] == uint256(-1)); // max royalty is 10%
-            _exceptionalRoyalties[ids[i]] = royalties[i];
+            exceptionalRoyalties[ids[i]] = royalties[i];
             emit SetExceptionalRoyalty(ids[i], royalties[i]);
         }
     }
 
     function royalties(uint256 id) external view returns (uint256) {
-        if(_exceptionalRoyalties[id] == 0) {
+        if(exceptionalRoyalties[id] == 0) {
             return artists.baseRoyalty(artToArtist[id]);
         } else {
-            return _exceptionalRoyalties[id] == uint256(-1) ? 0 : _exceptionalRoyalties[id];
+            return exceptionalRoyalties[id] == uint256(-1) ? 0 : exceptionalRoyalties[id];
         }
     }
 
@@ -1454,5 +1457,9 @@ contract Arts is Ownable, KIP17Full("Klubs Arts", "ARTS"), KIP17Burnable, KIP17P
 
     function isBanned(uint256 id) external view returns (bool) {
         return _banned[id] || artists.banned(artToArtist[id]);
+    }
+
+    function exists(uint256 tokenId) external view returns (bool) {
+        return _exists(tokenId);
     }
 }

@@ -6,6 +6,7 @@ import "./klaytn-contracts/token/KIP17/IKIP17.sol";
 import "./interfaces/IArtStore.sol";
 import "./interfaces/IArtists.sol";
 import "./interfaces/IMix.sol";
+import "./interfaces/IMileage.sol";
 import "./Arts.sol";
 
 contract ArtStore is Ownable, IArtStore {
@@ -23,12 +24,14 @@ contract ArtStore is Ownable, IArtStore {
     IArtists public artists;
     Arts public arts;
     IMix public mix;
+    IMileage public mileage;
 
-    constructor(IArtists _artists, Arts _arts, IMix _mix) public {
+    constructor(IArtists _artists, Arts _arts, IMix _mix, IMileage _mileage) public {
         feeReceiver = msg.sender;
         artists = _artists;
         arts = _arts;
         mix = _mix;
+        mileage = _mileage;
     }
 
     function setFee(uint256 _fee) external onlyOwner {
@@ -112,18 +115,72 @@ contract ArtStore is Ownable, IArtStore {
 
     function distributeReward(
         uint256 id,
+        address buyer,
         address to,
         uint256 amount
     ) private {
-        uint256 _fee = amount.mul(fee).div(1e4);
-        if (_fee > 0) mix.transfer(feeReceiver, _fee);
 
         address artist = arts.artToArtist(id);
-        uint256 royalty = arts.royalties(id);
-        uint256 _royalty = amount.mul(royalty).div(1e4);
-        if (_royalty > 0) mix.transfer(artist, _royalty);
+        if (arts.mileageMode(id)) {
+            if (artists.onlyKlubsMembership(artist)) {
 
-        mix.transfer(to, amount.sub(_fee).sub(_royalty));
+                uint256 halfMileage = amount.mul(mileage.mileagePercent()).div(1e4).div(2);
+
+                uint256 _fee = amount.mul(fee).div(1e4);
+                if (_fee > halfMileage) {
+                    mix.transfer(feeReceiver, _fee.sub(halfMileage));
+                    mix.approve(address(mileage), halfMileage);
+                    mileage.charge(buyer, halfMileage);
+                } else if (_fee > 0) {
+                    mix.approve(address(mileage), _fee);
+                    mileage.charge(buyer, _fee);
+                }
+
+                uint256 royalty = arts.royalties(id);
+                uint256 _royalty = amount.mul(royalty).div(1e4);
+                if (_royalty > halfMileage) {
+                    mix.transfer(artist, _royalty.sub(halfMileage));
+                    mix.approve(address(mileage), halfMileage);
+                    mileage.charge(buyer, halfMileage);
+                } else if (_royalty > 0) {
+                    mix.approve(address(mileage), _royalty);
+                    mileage.charge(buyer, _royalty);
+                }
+
+                mix.transfer(to, amount.sub(_fee).sub(_royalty));
+            }
+
+            else {
+                uint256 _fee = amount.mul(fee).div(1e4);
+                if (_fee > 0) mix.transfer(feeReceiver, _fee);
+
+                uint256 _mileage = amount.mul(mileage.mileagePercent()).div(1e4);
+
+                uint256 royalty = arts.royalties(id);
+                uint256 _royalty = amount.mul(royalty).div(1e4);
+                if (_royalty > _mileage) {
+                    mix.transfer(artist, _royalty.sub(_mileage));
+                    mix.approve(address(mileage), _mileage);
+                    mileage.charge(buyer, _mileage);
+                } else if (_royalty > 0) {
+                    mix.approve(address(mileage), _royalty);
+                    mileage.charge(buyer, _royalty);
+                }
+
+                mix.transfer(to, amount.sub(_fee).sub(_royalty));
+            }
+        }
+
+        else {
+            uint256 _fee = amount.mul(fee).div(1e4);
+            if (_fee > 0) mix.transfer(feeReceiver, _fee);
+
+            uint256 royalty = arts.royalties(id);
+            uint256 _royalty = amount.mul(royalty).div(1e4);
+            if (_royalty > 0) mix.transfer(artist, _royalty);
+
+            mix.transfer(to, amount.sub(_fee).sub(_royalty));
+        }
 
         removeSale(id);
         removeAuction(id);
@@ -222,7 +279,8 @@ contract ArtStore is Ownable, IArtStore {
 
     function buy(
         uint256[] calldata ids,
-        uint256[] calldata prices
+        uint256[] calldata prices,
+        uint256[] calldata mileages
     ) external userWhitelist(msg.sender) {
         require(ids.length == prices.length);
         for (uint256 i = 0; i < ids.length; i++) {
@@ -232,8 +290,9 @@ contract ArtStore is Ownable, IArtStore {
 
             arts.safeTransferFrom(sale.seller, msg.sender, ids[i]);
 
-            mix.transferFrom(msg.sender, address(this), sale.price);
-            distributeReward(ids[i], sale.seller, sale.price);
+            mix.transferFrom(msg.sender, address(this), sale.price.sub(mileages[i]));
+            mileage.use(msg.sender, mileages[i]);
+            distributeReward(ids[i], msg.sender, sale.seller, sale.price);
             removeUserSell(sale.seller, ids[i]);
 
             emit Buy(ids[i], msg.sender, sale.price);
@@ -243,6 +302,7 @@ contract ArtStore is Ownable, IArtStore {
     struct OfferInfo {
         address offeror;
         uint256 price;
+        uint256 mileage;
     }
     mapping(uint256 => OfferInfo[]) public offers; //offers[id]
     mapping(address => ArtInfo[]) public userOfferInfo; //userOfferInfo[offeror]
@@ -258,7 +318,8 @@ contract ArtStore is Ownable, IArtStore {
 
     function makeOffer(
         uint256 id,
-        uint256 price
+        uint256 price,
+        uint256 _mileage
     ) external userWhitelist(msg.sender) returns (uint256 offerId) {
         require(price > 0);
         require(arts.ownerOf(id) != msg.sender);
@@ -271,9 +332,10 @@ contract ArtStore is Ownable, IArtStore {
         OfferInfo[] storage os = offers[id];
         offerId = os.length;
 
-        os.push(OfferInfo({offeror: msg.sender, price: price}));
+        os.push(OfferInfo({offeror: msg.sender, price: price, mileage: _mileage}));
 
-        mix.transferFrom(msg.sender, address(this), price);
+        mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
+        mileage.use(msg.sender, _mileage);
 
         uint256 lastIndex = userOfferInfoLength(msg.sender);
         userOfferInfo[msg.sender].push(ArtInfo({id: id, price: price}));
@@ -309,7 +371,9 @@ contract ArtStore is Ownable, IArtStore {
         require(_offer.offeror == msg.sender);
         delete os[offerId];
         removeUserOffer(msg.sender, id);
-        mix.transfer(msg.sender, _offer.price);
+        mix.transfer(msg.sender, _offer.price.sub(_offer.mileage));
+        mix.approve(address(mileage), _offer.mileage);
+        mileage.charge(msg.sender, _offer.mileage);
 
         emit CancelOffer(id, offerId, msg.sender);
     }
@@ -326,7 +390,7 @@ contract ArtStore is Ownable, IArtStore {
         uint256 price = _offer.price;
         delete os[offerId];
 
-        distributeReward(id, msg.sender, price);
+        distributeReward(id, _offer.offeror, msg.sender, price);
         removeUserOffer(_offer.offeror, id);
         emit AcceptOffer(id, offerId, msg.sender);
     }
@@ -409,6 +473,7 @@ contract ArtStore is Ownable, IArtStore {
     struct Bidding {
         address bidder;
         uint256 price;
+        uint256 mileage;
     }
     mapping(uint256 => Bidding[]) public biddings; //bidding[id]
     mapping(address => ArtInfo[]) public userBiddingInfo; //userBiddingInfo[seller]
@@ -424,7 +489,8 @@ contract ArtStore is Ownable, IArtStore {
 
     function bid(
         uint256 id,
-        uint256 price
+        uint256 price,
+        uint256 _mileage
     ) external userWhitelist(msg.sender) returns (uint256 biddingId) {
         AuctionInfo storage _auction = auctions[id];
         uint256 endBlock = _auction.endBlock;
@@ -439,13 +505,16 @@ contract ArtStore is Ownable, IArtStore {
         } else {
             Bidding memory bestBidding = bs[biddingId - 1];
             require(bestBidding.price < price);
-            mix.transfer(bestBidding.bidder, bestBidding.price);
+            mix.transfer(bestBidding.bidder, bestBidding.price.sub(bestBidding.mileage));
+            mix.approve(address(mileage), bestBidding.mileage);
+            mileage.charge(msg.sender, bestBidding.mileage);
             removeUserBidding(bestBidding.bidder, id);
         }
 
-        bs.push(Bidding({bidder: msg.sender, price: price}));
+        bs.push(Bidding({bidder: msg.sender, price: price, mileage: _mileage}));
 
-        mix.transferFrom(msg.sender, address(this), price);
+        mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
+        mileage.use(msg.sender, _mileage);
 
         uint256 lastIndex = userBiddingInfoLength(msg.sender);
         userBiddingInfo[msg.sender].push(ArtInfo({id: id, price: price}));
@@ -485,7 +554,7 @@ contract ArtStore is Ownable, IArtStore {
 
         arts.safeTransferFrom(address(this), bidding.bidder, id);
 
-        distributeReward(id, _auction.seller, bidding.price);
+        distributeReward(id, bidding.bidder, _auction.seller, bidding.price);
         removeUserAuction(_auction.seller, id);
         removeUserBidding(bidding.bidder, id);
 
@@ -516,7 +585,9 @@ contract ArtStore is Ownable, IArtStore {
 
             delete os[offerIds[i]];
             removeUserOffer(_offer.offeror, ids[i]);
-            mix.transfer(_offer.offeror, _offer.price);
+            mix.transfer(_offer.offeror, _offer.price.sub(_offer.mileage));
+            mix.approve(address(mileage), _offer.mileage);
+            mileage.charge(_offer.offeror, _offer.mileage);
 
             emit CancelOffer(ids[i], offerIds[i], _offer.offeror);
             emit CancelOfferByOwner(ids[i], offerIds[i]);
@@ -530,7 +601,9 @@ contract ArtStore is Ownable, IArtStore {
 
             if (bs.length > 0) {
                 Bidding memory bestBidding = bs[bs.length - 1];
-                mix.transfer(bestBidding.bidder, bestBidding.price);
+                mix.transfer(bestBidding.bidder, bestBidding.price.sub(bestBidding.mileage));
+                mix.approve(address(mileage), bestBidding.mileage);
+                mileage.charge(bestBidding.bidder, bestBidding.mileage);
                 removeUserBidding(bestBidding.bidder, ids[i]);
                 delete biddings[ids[i]];
             }

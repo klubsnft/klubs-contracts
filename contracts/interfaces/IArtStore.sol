@@ -36,14 +36,14 @@ interface IArtStore {
 
     function sell(uint256[] calldata ids, uint256[] calldata prices) external;
     function cancelSale(uint256[] calldata ids) external;
-    function buy(uint256[] calldata ids) external;
+    function buy(uint256[] calldata ids, uint256[] calldata prices, uint256[] calldata mileages) external;
 
     function offers(uint256 id, uint256 index) external view returns (address offeror, uint256 price);
     function userOfferInfo(address offeror, uint256 index) external view returns (uint256 id, uint256 price);
     function userOfferInfoLength(address offeror) external view returns (uint256);
     function offerCount(uint256 id) external view returns (uint256);
 
-    function makeOffer(uint256 id, uint256 price) external returns (uint256 offerId);
+    function makeOffer(uint256 id, uint256 price, uint256 mileage) external returns (uint256 offerId);
     function cancelOffer(uint256 id, uint256 offerId) external;
     function acceptOffer(uint256 id, uint256 offerId) external;
 
@@ -63,6 +63,6 @@ interface IArtStore {
     function userBiddingInfoLength(address bidder) external view returns (uint256);
     function biddingCount(uint256 id) external view returns (uint256);
 
-    function bid(uint256 id, uint256 price) external returns (uint256 biddingId);
+    function bid(uint256 id, uint256 price, uint256 mileage) external returns (uint256 biddingId);
     function claim(uint256 id) external;
 }
