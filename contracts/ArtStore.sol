@@ -79,7 +79,7 @@ contract ArtStore is Ownable, IArtStore {
         require(ids.length == to.length);
         for (uint256 i = 0; i < ids.length; i++) {
             require(arts.isBanned(ids[i]) != true);
-            arts.transferFrom(msg.sender, to[i], ids[i]);
+            arts.safeTransferFrom(msg.sender, to[i], ids[i]);
         }
     }
 
