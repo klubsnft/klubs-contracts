@@ -78,13 +78,13 @@ contract ArtStore is Ownable, IArtStore {
     ) external userWhitelist(msg.sender) {
         require(ids.length == to.length);
         for (uint256 i = 0; i < ids.length; i++) {
-            require(arts.isBanned(ids[i]) != true);
+            require(!arts.isBanned(ids[i]));
             arts.safeTransferFrom(msg.sender, to[i], ids[i]);
         }
     }
 
     function removeSale(uint256 id) private {
-        if (checkSelling(id) == true) {
+        if (checkSelling(id)) {
             uint256 lastIndex = onSalesCount().sub(1);
             uint256 index = onSalesIndex[id];
             if (index != lastIndex) {
@@ -99,7 +99,7 @@ contract ArtStore is Ownable, IArtStore {
     }
 
     function removeAuction(uint256 id) private {
-        if (checkAuction(id) == true) {
+        if (checkAuction(id)) {
             uint256 lastIndex = onAuctionsCount().sub(1);
             uint256 index = onAuctionsIndex[id];
             if (index != lastIndex) {
@@ -215,7 +215,7 @@ contract ArtStore is Ownable, IArtStore {
     ) external userWhitelist(msg.sender) {
         require(ids.length == prices.length);
         for (uint256 i = 0; i < ids.length; i++) {
-            require(arts.isBanned(ids[i]) != true);
+            require(!arts.isBanned(ids[i]));
             require(prices[i] > 0);
 
             require(arts.ownerOf(ids[i]) == msg.sender);
