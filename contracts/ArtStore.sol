@@ -323,6 +323,7 @@ contract ArtStore is Ownable, IArtStore {
     ) external userWhitelist(msg.sender) returns (uint256 offerId) {
         require(price > 0);
         require(arts.ownerOf(id) != msg.sender);
+        require(!arts.isBanned(id));
 
         if (userOfferInfoLength(msg.sender) > 0) {
             ArtInfo storage _pInfo = userOfferInfo[msg.sender][0];
@@ -426,6 +427,7 @@ contract ArtStore is Ownable, IArtStore {
         uint256 endBlock
     ) external userWhitelist(msg.sender) {
         require(arts.ownerOf(id) == msg.sender);
+        require(!arts.isBanned(id));
         require(endBlock > block.number);
         arts.transferFrom(msg.sender, address(this), id);
 
@@ -494,6 +496,7 @@ contract ArtStore is Ownable, IArtStore {
         uint256 price,
         uint256 _mileage
     ) external userWhitelist(msg.sender) returns (uint256 biddingId) {
+        require(!arts.isBanned(id));
         AuctionInfo storage _auction = auctions[id];
         uint256 endBlock = _auction.endBlock;
         address seller = _auction.seller;
