@@ -212,6 +212,7 @@ contract ArtStore is Ownable, IArtStore {
 
             require(arts.ownerOf(ids[i]) == msg.sender);
             require(arts.isApprovedForAll(msg.sender, address(this)));
+            require(!checkSelling(ids[i]));
 
             sales[ids[i]] = Sale({seller: msg.sender, price: prices[i]});
             onSalesIndex[ids[i]] = onSales.length;
