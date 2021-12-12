@@ -172,7 +172,7 @@ contract ArtStore is Ownable, IArtStore {
             mileage.charge(buyer, _mileage);
         }
 
-        mix.transfer(to, amount.sub(_fee).sub(_royalty));
+        mix.transfer(to, amount.sub(_fee).sub(_royalty).sub(_mileage));
 
         removeSale(id);
         removeAuction(id);
