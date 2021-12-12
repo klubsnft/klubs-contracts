@@ -119,70 +119,60 @@ contract ArtStore is Ownable, IArtStore {
         address to,
         uint256 amount
     ) private {
-
         address artist = arts.artToArtist(id);
+
+        uint256 _fee;
+        uint256 _royalty;
+        uint256 _mileage;
+
         if (arts.mileageMode(id)) {
             if (artists.onlyKlubsMembership(artist)) {
+                uint256 mileageFromFee = amount.mul(mileage.onlyKlubsPercent()).div(1e4);
+                _fee = amount.mul(fee).div(1e4);
 
-                uint256 onlyKlubsMileage = amount.mul(mileage.onlyKlubsPercent()).div(1e4);
-
-                uint256 _fee = amount.mul(fee).div(1e4);
-                if (_fee > onlyKlubsMileage) {
-                    mix.transfer(feeReceiver, _fee.sub(onlyKlubsMileage));
-                    mix.approve(address(mileage), onlyKlubsMileage);
-                    mileage.charge(buyer, onlyKlubsMileage);
-                } else if (_fee > 0) {
-                    mix.approve(address(mileage), _fee);
-                    mileage.charge(buyer, _fee);
+                if (_fee > mileageFromFee) {
+                    _mileage = mileageFromFee;
+                    _fee = _fee.sub(mileageFromFee);
+                } else {
+                    _mileage = _fee;
+                    _fee = 0;
                 }
 
-                uint256 _mileage = amount.mul(mileage.mileagePercent()).div(1e4).sub(onlyKlubsMileage);
+                uint256 mileageFromRoyalty = amount.mul(mileage.mileagePercent()).div(1e4).sub(mileageFromFee);
+                _royalty = amount.mul(arts.royalties(id)).div(1e4);
 
-                uint256 royalty = arts.royalties(id);
-                uint256 _royalty = amount.mul(royalty).div(1e4);
+                if (_royalty > mileageFromRoyalty) {
+                    _mileage = _mileage.add(mileageFromRoyalty);
+                    _royalty = _royalty.sub(mileageFromRoyalty);
+                } else {
+                    _mileage = _mileage.add(_royalty);
+                    _royalty = 0;
+                }
+            } else {
+                _fee = amount.mul(fee).div(1e4);
+                _mileage = amount.mul(mileage.mileagePercent()).div(1e4);
+                _royalty = amount.mul(arts.royalties(id)).div(1e4);
+
                 if (_royalty > _mileage) {
-                    mix.transfer(artist, _royalty.sub(_mileage));
-                    mix.approve(address(mileage), _mileage);
-                    mileage.charge(buyer, _mileage);
-                } else if (_royalty > 0) {
-                    mix.approve(address(mileage), _royalty);
-                    mileage.charge(buyer, _royalty);
+                    _royalty = _royalty.sub(_mileage);
+                } else {
+                    _mileage = _royalty;
+                    _royalty = 0;
                 }
-
-                mix.transfer(to, amount.sub(_fee).sub(_royalty));
             }
-
-            else {
-                uint256 _fee = amount.mul(fee).div(1e4);
-                if (_fee > 0) mix.transfer(feeReceiver, _fee);
-
-                uint256 _mileage = amount.mul(mileage.mileagePercent()).div(1e4);
-
-                uint256 royalty = arts.royalties(id);
-                uint256 _royalty = amount.mul(royalty).div(1e4);
-                if (_royalty > _mileage) {
-                    mix.transfer(artist, _royalty.sub(_mileage));
-                    mix.approve(address(mileage), _mileage);
-                    mileage.charge(buyer, _mileage);
-                } else if (_royalty > 0) {
-                    mix.approve(address(mileage), _royalty);
-                    mileage.charge(buyer, _royalty);
-                }
-
-                mix.transfer(to, amount.sub(_fee).sub(_royalty));
-            }
+        } else {
+            _fee = amount.mul(fee).div(1e4);
+            _royalty = amount.mul(arts.royalties(id)).div(1e4);
         }
 
-        else {
-            uint256 _fee = amount.mul(fee).div(1e4);
-            if (_fee > 0) mix.transfer(feeReceiver, _fee);
-
-            uint256 royalty = arts.royalties(id);
-            uint256 _royalty = amount.mul(royalty).div(1e4);
-            if (_royalty > 0) mix.transfer(artist, _royalty);
-
-            mix.transfer(to, amount.sub(_fee).sub(_royalty));
+        if (_fee > 0) mix.transfer(feeReceiver, _fee);
+        if (_royalty > 0) mix.transfer(artist, _royalty);
+        if (_mileage > 0) {
+            mix.approve(address(mileage), _mileage);
+            mileage.charge(buyer, _mileage);
         }
+
+        mix.transfer(to, amount.sub(_fee).sub(_royalty));
 
         removeSale(id);
         removeAuction(id);
