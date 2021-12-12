@@ -38,7 +38,7 @@ interface IArtStore {
     function cancelSale(uint256[] calldata ids) external;
     function buy(uint256[] calldata ids, uint256[] calldata prices, uint256[] calldata mileages) external;
 
-    function offers(uint256 id, uint256 index) external view returns (address offeror, uint256 price);
+    function offers(uint256 id, uint256 index) external view returns (address offeror, uint256 price, uint256 mileage);
     function userOfferInfo(address offeror, uint256 index) external view returns (uint256 id, uint256 price);
     function userOfferInfoLength(address offeror) external view returns (uint256);
     function offerCount(uint256 id) external view returns (uint256);
@@ -52,13 +52,13 @@ interface IArtStore {
     function userAuctionInfoLength(address seller) external view returns (uint256);
     function checkAuction(uint256 id) external view returns (bool);
 
-    function onAuctionsCount(address addr) view external returns (uint256);
+    function onAuctionsCount() view external returns (uint256);
     function onAuctions(uint256 index) view external returns (uint256);
 
     function createAuction(uint256 id, uint256 startPrice, uint256 endBlock) external;
     function cancelAuction(uint256 id) external;
 
-    function biddings(uint256 id, uint256 index) external view returns (address bidder, uint256 price);
+    function biddings(uint256 id, uint256 index) external view returns (address bidder, uint256 price, uint256 mileage);
     function userBiddingInfo(address bidder, uint256 index) external view returns (uint256 id, uint256 price);
     function userBiddingInfoLength(address bidder) external view returns (uint256);
     function biddingCount(uint256 id) external view returns (uint256);
