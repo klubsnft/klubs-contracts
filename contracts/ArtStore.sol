@@ -422,6 +422,7 @@ contract ArtStore is Ownable, IArtStore {
         require(arts.ownerOf(id) == msg.sender);
         require(!arts.isBanned(id));
         require(endBlock > block.number);
+        require(!checkSelling(id));
         arts.transferFrom(msg.sender, address(this), id);
 
         auctions[id] = AuctionInfo({seller: msg.sender, startPrice: startPrice, endBlock: endBlock});
