@@ -124,24 +124,26 @@ contract ArtStore is Ownable, IArtStore {
         if (arts.mileageMode(id)) {
             if (artists.onlyKlubsMembership(artist)) {
 
-                uint256 halfMileage = amount.mul(mileage.mileagePercent()).div(1e4).div(2);
+                uint256 onlyKlubsMileage = amount.mul(mileage.onlyKlubsPercent()).div(1e4);
 
                 uint256 _fee = amount.mul(fee).div(1e4);
-                if (_fee > halfMileage) {
-                    mix.transfer(feeReceiver, _fee.sub(halfMileage));
-                    mix.approve(address(mileage), halfMileage);
-                    mileage.charge(buyer, halfMileage);
+                if (_fee > onlyKlubsMileage) {
+                    mix.transfer(feeReceiver, _fee.sub(onlyKlubsMileage));
+                    mix.approve(address(mileage), onlyKlubsMileage);
+                    mileage.charge(buyer, onlyKlubsMileage);
                 } else if (_fee > 0) {
                     mix.approve(address(mileage), _fee);
                     mileage.charge(buyer, _fee);
                 }
 
+                uint256 _mileage = amount.mul(mileage.mileagePercent()).div(1e4).sub(onlyKlubsMileage);
+
                 uint256 royalty = arts.royalties(id);
                 uint256 _royalty = amount.mul(royalty).div(1e4);
-                if (_royalty > halfMileage) {
-                    mix.transfer(artist, _royalty.sub(halfMileage));
-                    mix.approve(address(mileage), halfMileage);
-                    mileage.charge(buyer, halfMileage);
+                if (_royalty > _mileage) {
+                    mix.transfer(artist, _royalty.sub(_mileage));
+                    mix.approve(address(mileage), _mileage);
+                    mileage.charge(buyer, _mileage);
                 } else if (_royalty > 0) {
                     mix.approve(address(mileage), _royalty);
                     mileage.charge(buyer, _royalty);
