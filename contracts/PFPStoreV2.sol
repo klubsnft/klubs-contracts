@@ -4,8 +4,9 @@ import "./klaytn-contracts/ownership/Ownable.sol";
 import "./klaytn-contracts/math/SafeMath.sol";
 import "./klaytn-contracts/token/KIP17/IKIP17.sol";
 import "./interfaces/IPFPStoreV2.sol";
-import "./interfaces/IPFPs.sol";
+import "./interfaces/IPFPsV2.sol";
 import "./interfaces/IMix.sol";
+import "./interfaces/IMileage.sol";
 
 contract PFPStoreV2 is Ownable, IPFPStoreV2 {
     using SafeMath for uint256;
@@ -20,13 +21,15 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
     address public feeReceiver;
     uint256 public auctionExtensionInterval = 300;
 
-    IPFPs public pfps;
+    IPFPsV2 public pfps;
     IMix public mix;
+    IMileage public mileage;
 
-    constructor(IPFPs _pfps, IMix _mix) public {
+    constructor(IPFPsV2 _pfps, IMix _mix, IMileage _mileage) public {
         feeReceiver = msg.sender;
         pfps = _pfps;
         mix = _mix;
+        mileage = _mileage;
     }
 
     function setFee(uint256 _fee) external onlyOwner {
@@ -42,7 +45,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
         auctionExtensionInterval = interval;
     }
 
-    function setPFPs(IPFPs _pfps) external onlyOwner {
+    function setPFPs(IPFPsV2 _pfps) external onlyOwner {
         pfps = _pfps;
     }
 
@@ -113,17 +116,64 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
     function distributeReward(
         address addr,
         uint256 id,
+        address buyer,
         address to,
         uint256 amount
     ) private {
-        uint256 _fee = amount.mul(fee).div(1e4);
-        if (_fee > 0) mix.transfer(feeReceiver, _fee);
-
         (address receiver, uint256 royalty) = pfps.royalties(addr);
-        uint256 _royalty = amount.mul(royalty).div(1e4);
-        if (_royalty > 0) mix.transfer(receiver, _royalty);
 
-        mix.transfer(to, amount.sub(_fee).sub(_royalty));
+        uint256 _fee;
+        uint256 _royalty;
+        uint256 _mileage;
+
+        if (pfps.mileageMode(addr)) {
+            if (pfps.onlyKlubsMembership(addr)) {
+                uint256 mileageFromFee = amount.mul(mileage.onlyKlubsPercent()).div(1e4);
+                _fee = amount.mul(fee).div(1e4);
+
+                if (_fee > mileageFromFee) {
+                    _mileage = mileageFromFee;
+                    _fee = _fee.sub(mileageFromFee);
+                } else {
+                    _mileage = _fee;
+                    _fee = 0;
+                }
+
+                uint256 mileageFromRoyalty = amount.mul(mileage.mileagePercent()).div(1e4).sub(mileageFromFee);
+                _royalty = amount.mul(royalty).div(1e4);
+
+                if (_royalty > mileageFromRoyalty) {
+                    _mileage = _mileage.add(mileageFromRoyalty);
+                    _royalty = _royalty.sub(mileageFromRoyalty);
+                } else {
+                    _mileage = _mileage.add(_royalty);
+                    _royalty = 0;
+                }
+            } else {
+                _fee = amount.mul(fee).div(1e4);
+                _mileage = amount.mul(mileage.mileagePercent()).div(1e4);
+                _royalty = amount.mul(royalty).div(1e4);
+
+                if (_royalty > _mileage) {
+                    _royalty = _royalty.sub(_mileage);
+                } else {
+                    _mileage = _royalty;
+                    _royalty = 0;
+                }
+            }
+        } else {
+            _fee = amount.mul(fee).div(1e4);
+            _royalty = amount.mul(royalty).div(1e4);
+        }
+
+        if (_fee > 0) mix.transfer(feeReceiver, _fee);
+        if (_royalty > 0) mix.transfer(receiver, _royalty);
+        if (_mileage > 0) {
+            mix.approve(address(mileage), _mileage);
+            mileage.charge(buyer, _mileage);
+        }
+
+        mix.transfer(to, amount.sub(_fee).sub(_royalty).sub(_mileage));
 
         removeSale(addr, id);
         removeAuction(addr, id);
@@ -239,7 +289,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
             IKIP17(addrs[i]).safeTransferFrom(sale.seller, msg.sender, ids[i]);
 
             mix.transferFrom(msg.sender, address(this), sale.price);
-            distributeReward(addrs[i], ids[i], sale.seller, sale.price);
+            distributeReward(addrs[i], ids[i], msg.sender, sale.seller, sale.price);
             removeUserSell(sale.seller, addrs[i], ids[i]);
 
             emit Buy(addrs[i], ids[i], msg.sender, sale.price);
@@ -336,7 +386,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
         uint256 price = _offer.price;
         delete os[offerId];
 
-        distributeReward(addr, id, msg.sender, price);
+        distributeReward(addr, id, _offer.offeror, msg.sender, price);
         removeUserOffer(_offer.offeror, addr, id);
         emit AcceptOffer(addr, id, offerId, msg.sender);
     }
@@ -500,7 +550,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
 
         IKIP17(addr).safeTransferFrom(address(this), bidding.bidder, id);
 
-        distributeReward(addr, id, _auction.seller, bidding.price);
+        distributeReward(addr, id, bidding.bidder, _auction.seller, bidding.price);
         removeUserAuction(_auction.seller, addr, id);
         removeUserBidding(bidding.bidder, addr, id);
 
