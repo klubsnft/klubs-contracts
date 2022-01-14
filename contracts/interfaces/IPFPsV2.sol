@@ -14,8 +14,8 @@ interface IPFPsV2 {
     event SetRoyalty(address indexed addr, address receiver, uint256 royalty);
     event SetExtra(address indexed addr, string extra);
 
-    event JoinOnlyKlubsMembership(address indexed artist);
-    event ExitOnlyKlubsMembership(address indexed artist);
+    event JoinOnlyKlubsMembership(address indexed addr);
+    event ExitOnlyKlubsMembership(address indexed addr);
     event MileageOn(address indexed addr);
     event MileageOff(address indexed addr);
 
@@ -23,6 +23,7 @@ interface IPFPsV2 {
     event Unban(address indexed addr);
 
     function propose(address addr) external;
+    function proposalCount() view external returns (uint256);
 
     function addrCount() view external returns (uint256);
     function addrs(uint256 index) view external returns (address);
@@ -53,7 +54,7 @@ interface IPFPsV2 {
     function extras(address addr) view external returns (string memory);
     function setExtra(address addr, string calldata extra) external;
 
-    function onlyKlubsMembership(address artist) view external returns (bool);
+    function onlyKlubsMembership(address addr) view external returns (bool);
     function mileageMode(address addr) view external returns (bool);
     function mileageOn(address addr) external;
     function mileageOff(address addr) external;
