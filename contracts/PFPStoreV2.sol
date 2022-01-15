@@ -287,7 +287,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
             require(sale.seller != address(0) && sale.seller != msg.sender);
             require(sale.price == prices[i]);
 
-            IKIP17(addrs[i]).safeTransferFrom(sale.seller, msg.sender, ids[i]);
+            IKIP17(addrs[i]).transferFrom(sale.seller, msg.sender, ids[i]);
 
             mix.transferFrom(msg.sender, address(this), sale.price);
             distributeReward(addrs[i], ids[i], msg.sender, sale.seller, sale.price);
@@ -383,7 +383,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
         OfferInfo memory _offer = os[offerId];
         require(_offer.offeror != msg.sender);
 
-        IKIP17(addr).safeTransferFrom(msg.sender, _offer.offeror, id);
+        IKIP17(addr).transferFrom(msg.sender, _offer.offeror, id);
         uint256 price = _offer.price;
         delete os[offerId];
 
@@ -550,7 +550,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
 
         require(block.number >= _auction.endBlock);
 
-        IKIP17(addr).safeTransferFrom(address(this), bidding.bidder, id);
+        IKIP17(addr).transferFrom(address(this), bidding.bidder, id);
 
         distributeReward(addr, id, bidding.bidder, _auction.seller, bidding.price);
         removeUserAuction(_auction.seller, addr, id);
