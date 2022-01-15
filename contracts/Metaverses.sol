@@ -13,6 +13,16 @@ contract Metaverses is Ownable, IMetaverses {
 
     uint256 public metaverseCount;
 
+    function addMetaverse(string calldata extra) external {
+        uint256 id = metaverseCount++;
+        _addManager(id, msg.sender);
+
+        if(bytes(extra).length > 0) {
+            extras[id] = extra;
+            emit SetExtra(id, extra);
+        }
+    }
+
     mapping(uint256 => address[]) public managers;
     mapping(uint256 => mapping(address => uint256)) public managersIndex;
     mapping(address => uint256[]) public managerMetaverses;
@@ -37,6 +47,10 @@ contract Metaverses is Ownable, IMetaverses {
 
     function addManager(uint256 id, address manager) onlyManager(id) external {
         require(!existsManager(id, manager));
+        _addManager(id, manager);
+    }
+
+    function _addManager(uint256 id, address manager) internal {
         managersIndex[id][manager] = managers[id].length;
         managers[id].push(manager);
         managerMetaversesIndex[manager][id] = managerMetaverses[manager].length;
