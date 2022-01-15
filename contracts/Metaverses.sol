@@ -132,12 +132,12 @@ contract Metaverses is Ownable, IMetaverses {
     struct ItemProposal {
         uint256 id;
         address addr;
-        IMetaverses.ItemType itemType;
+        ItemType itemType;
         address proposer;
     }
     ItemProposal[] public itemProposals;
 
-    function proposeItem(uint256 id, address addr, IMetaverses.ItemType itemType) onlyManager(id) external {
+    function proposeItem(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
         itemProposals.push(ItemProposal({
             id: id,
             addr: addr,
@@ -154,13 +154,13 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => address[]) public itemAddrs;
     mapping(uint256 => mapping(address => bool)) public itemAdded;
     mapping(uint256 => mapping(address => uint256)) public itemAddedBlocks;
-    mapping(uint256 => mapping(address => IMetaverses.ItemType)) public itemTypes;
+    mapping(uint256 => mapping(address => ItemType)) public itemTypes;
 
     function itemAddrCount(uint256 id) view external returns (uint256) {
         return itemAddrs[id].length;
     }
 
-    function _addItem(uint256 id, address addr, IMetaverses.ItemType itemType) private {
+    function _addItem(uint256 id, address addr, ItemType itemType) private {
         require(!itemAdded[id][addr]);
 
         itemAddrs[id].push(addr);
@@ -171,16 +171,16 @@ contract Metaverses is Ownable, IMetaverses {
         emit AddItem(id, addr, itemType);
     }
 
-    function addItemByOwner(uint256 id, address addr, IMetaverses.ItemType itemType) onlyOwner public {
+    function addItemByOwner(uint256 id, address addr, ItemType itemType) onlyOwner public {
         _addItem(id, addr, itemType);
     }
 
-    function addItemByItemOwner(uint256 id, address addr, IMetaverses.ItemType itemType) onlyManager(id) external {
+    function addItemByItemOwner(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
         require(Ownable(addr).owner() == msg.sender);
         _addItem(id, addr, itemType);
     }
 
-    function addItemByMinter(uint256 id, address addr, IMetaverses.ItemType itemType) onlyManager(id) external {
+    function addItemByMinter(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
         require(MinterRole(addr).isMinter(msg.sender));
         _addItem(id, addr, itemType);
     }
