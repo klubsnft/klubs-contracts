@@ -137,7 +137,7 @@ contract Metaverses is Ownable, IMetaverses {
     }
     ItemProposal[] public itemProposals;
 
-    function proposeItem(uint256 id, address addr, IMetaverses.ItemType itemType) external {
+    function proposeItem(uint256 id, address addr, IMetaverses.ItemType itemType) onlyManager(id) external {
         itemProposals.push(ItemProposal({
             id: id,
             addr: addr,
