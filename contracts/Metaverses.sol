@@ -1,5 +1,6 @@
 pragma solidity ^0.5.6;
 
+import "./klaytn-contracts/utils/Address.sol";
 import "./klaytn-contracts/ownership/Ownable.sol";
 import "./klaytn-contracts/math/SafeMath.sol";
 import "./klaytn-contracts/token/KIP17/IKIP17.sol";
@@ -171,19 +172,38 @@ contract Metaverses is Ownable, IMetaverses {
         emit AddItem(id, addr, itemType);
     }
 
-    function addItemByOwner(uint256 id, address addr, ItemType itemType) onlyOwner public {
+    function addItem(uint256 id, address addr, ItemType itemType) onlyManager(id) public {
+        require(_itemManagingRoleCheck(addr));
         _addItem(id, addr, itemType);
     }
 
-    function addItemByItemOwner(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
-        require(Ownable(addr).owner() == msg.sender);
-        _addItem(id, addr, itemType);
+    function _itemManagingRoleCheck(address addr) internal view returns (bool) {
+        if(isOwner()) return true;
+        else if(Address.isContract(addr)) {
+            (bool success0, bytes memory data0) = addr.staticcall(abi.encodeWithSignature("owner()"));
+            if(success0 && (abi.decode(data0, (address)) == msg.sender)) return true;
+
+            (bool success1, bytes memory data1) = addr.staticcall(abi.encodeWithSignature("isMinter(address)", msg.sender));
+            if(success1 && (abi.decode(data1, (bool)))) return true;
+        } else return false;
     }
 
-    function addItemByMinter(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
-        require(MinterRole(addr).isMinter(msg.sender));
-        _addItem(id, addr, itemType);
+    function passProposal(uint256 proposalId) external {
+        ItemProposal memory proposal = itemProposals[proposalId];
+        require(_itemManagingRoleCheck(proposal.addr));
+        _addItem(proposal.id, proposal.addr, proposal.itemType);
+
+        delete itemProposals[proposalId];
     }
+
+    function removeProposal(uint256 proposalId) external {
+        ItemProposal storage proposal = itemProposals[proposalId];
+        require(existsManager(proposal.id, msg.sender) || _itemManagingRoleCheck(proposal.addr));
+
+        delete itemProposals[proposalId];
+    }
+
+    //remove item : unnecessary
 
     mapping(uint256 => mapping(address => bool)) public itemEnumerables;
     mapping(uint256 => mapping(address => uint256)) public itemTotalSupplies;
