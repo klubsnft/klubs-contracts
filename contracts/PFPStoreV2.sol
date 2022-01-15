@@ -282,7 +282,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
         uint256[] calldata prices,
         uint256[] calldata mileages
     ) external userWhitelist(msg.sender) {
-        require(addrs.length == ids.length && addrs.length == prices.length);
+        require(addrs.length == ids.length && addrs.length == prices.length && addrs.length == mileages.length);
         for (uint256 i = 0; i < addrs.length; i++) {
             Sale memory sale = sales[addrs[i]][ids[i]];
             require(sale.seller != address(0) && sale.seller != msg.sender);

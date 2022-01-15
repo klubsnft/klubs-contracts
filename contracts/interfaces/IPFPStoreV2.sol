@@ -36,6 +36,7 @@ interface IPFPStoreV2 {
     function onSales(address addr, uint256 index) view external returns (uint256);
 
     function sell(address[] calldata addrs, uint256[] calldata ids, uint256[] calldata prices) external;
+    function changeSellPrice(address[] calldata addrs, uint256[] calldata ids, uint256[] calldata prices) external;
     function cancelSale(address[] calldata addrs, uint256[] calldata ids) external;
     function buy(address[] calldata addrs, uint256[] calldata ids) external;
 
