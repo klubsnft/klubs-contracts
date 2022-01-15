@@ -155,6 +155,10 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => mapping(address => uint256)) public itemAddedBlocks;
     mapping(uint256 => mapping(address => bool)) public itemEditions;
 
+    function itemAddrCount(uint256 id) view external returns (uint256) {
+        return itemAddrs[id].length;
+    }
+
     function _addItem(uint256 id, address addr, bool edition) private {
         require(!itemAdded[id][addr]);
 
