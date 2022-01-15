@@ -128,22 +128,23 @@ contract Metaverses is Ownable, IMetaverses {
         emit Unban(id);
     }
 
+    // enum ItemType { ERC1155, ERC721 }
     struct ItemProposal {
         uint256 id;
         address addr;
-        bool edition;
+        IMetaverses.ItemType itemType;
         address proposer;
     }
     ItemProposal[] public itemProposals;
 
-    function proposeItem(uint256 id, address addr, bool edition) external {
+    function proposeItem(uint256 id, address addr, IMetaverses.ItemType itemType) external {
         itemProposals.push(ItemProposal({
             id: id,
             addr: addr,
-            edition: edition,
+            itemType: itemType,
             proposer: msg.sender
         }));
-        emit ProposeItem(id, addr, edition, msg.sender);
+        emit ProposeItem(id, addr, itemType, msg.sender);
     }
 
     function itemProposalCount() view external returns (uint256) {
@@ -153,35 +154,35 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => address[]) public itemAddrs;
     mapping(uint256 => mapping(address => bool)) public itemAdded;
     mapping(uint256 => mapping(address => uint256)) public itemAddedBlocks;
-    mapping(uint256 => mapping(address => bool)) public itemEditions;
+    mapping(uint256 => mapping(address => IMetaverses.ItemType)) public itemTypes;
 
     function itemAddrCount(uint256 id) view external returns (uint256) {
         return itemAddrs[id].length;
     }
 
-    function _addItem(uint256 id, address addr, bool edition) private {
+    function _addItem(uint256 id, address addr, IMetaverses.ItemType itemType) private {
         require(!itemAdded[id][addr]);
 
         itemAddrs[id].push(addr);
         itemAdded[id][addr] = true;
         itemAddedBlocks[id][addr] = block.number;
-        itemEditions[id][addr] = edition;
+        itemTypes[id][addr] = itemType;
 
-        emit AddItem(id, addr, edition);
+        emit AddItem(id, addr, itemType);
     }
 
-    function addItemByOwner(uint256 id, address addr, bool edition) onlyOwner public {
-        _addItem(id, addr, edition);
+    function addItemByOwner(uint256 id, address addr, IMetaverses.ItemType itemType) onlyOwner public {
+        _addItem(id, addr, itemType);
     }
 
-    function addItemByItemOwner(uint256 id, address addr, bool edition) onlyManager(id) external {
+    function addItemByItemOwner(uint256 id, address addr, IMetaverses.ItemType itemType) onlyManager(id) external {
         require(Ownable(addr).owner() == msg.sender);
-        _addItem(id, addr, edition);
+        _addItem(id, addr, itemType);
     }
 
-    function addItemByMinter(uint256 id, address addr, bool edition) onlyManager(id) external {
+    function addItemByMinter(uint256 id, address addr, IMetaverses.ItemType itemType) onlyManager(id) external {
         require(MinterRole(addr).isMinter(msg.sender));
-        _addItem(id, addr, edition);
+        _addItem(id, addr, itemType);
     }
 
     mapping(uint256 => mapping(address => bool)) public itemEnumerables;

@@ -1,7 +1,11 @@
 pragma solidity ^0.5.6;
 
 interface IMetaverses {
-
+    enum ItemType {
+        ERC1155,
+        ERC721
+    }
+    
     event Add(address indexed manager);
     event AddManager(uint256 indexed id, address indexed manager);
     event RemoveManager(uint256 indexed id, address indexed manager);
@@ -16,8 +20,8 @@ interface IMetaverses {
     event Ban(uint256 indexed id);
     event Unban(uint256 indexed id);
 
-    event ProposeItem(uint256 indexed id, address indexed addr, bool edition, address indexed proposer);
-    event AddItem(uint256 indexed id, address indexed addr, bool edition);
+    event ProposeItem(uint256 indexed id, address indexed addr, ItemType itemType, address indexed proposer);
+    event AddItem(uint256 indexed id, address indexed addr, ItemType itemType);
     event SetItemEnumerable(uint256 indexed id, address indexed addr, bool enumerable);
     event SetItemTotalSupply(uint256 indexed id, address indexed addr, uint256 totalSupply);
     event SetItemExtra(uint256 indexed id, address indexed addr, string extra);
@@ -45,7 +49,7 @@ interface IMetaverses {
     function mileageOff(uint256 id) external;
     function banned(uint256 id) view external returns (bool);
 
-    function proposeItem(uint256 id, address addr, bool edition) external;
+    function proposeItem(uint256 id, address addr, ItemType itemType) external;
     function itemProposalCount() view external returns (uint256);
 
     function itemAddrCount(uint256 id) view external returns (uint256);
@@ -54,8 +58,8 @@ interface IMetaverses {
     function itemAddedBlocks(uint256 id, address addr) view external returns (uint256);
     function itemEditions(uint256 id, address addr) view external returns (bool);
 
-    function addItemByItemOwner(uint256 id, address addr, bool edition) external;
-    function addItemByMinter(uint256 id, address addr, bool edition) external;
+    function addItemByItemOwner(uint256 id, address addr, ItemType itemType) external;
+    function addItemByMinter(uint256 id, address addr, ItemType itemType) external;
 
     function itemEnumerables(uint256 id, address addr) view external returns (bool);
     function setItemEnumerable(uint256 id, address addr, bool enumerable) external;
