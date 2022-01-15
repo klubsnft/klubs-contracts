@@ -279,7 +279,8 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
     function buy(
         address[] calldata addrs,
         uint256[] calldata ids,
-        uint256[] calldata prices
+        uint256[] calldata prices,
+        uint256[] calldata mileages
     ) external userWhitelist(msg.sender) {
         require(addrs.length == ids.length && addrs.length == prices.length);
         for (uint256 i = 0; i < addrs.length; i++) {
@@ -289,7 +290,8 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
 
             IKIP17(addrs[i]).transferFrom(sale.seller, msg.sender, ids[i]);
 
-            mix.transferFrom(msg.sender, address(this), sale.price);
+            mix.transferFrom(msg.sender, address(this), sale.price.sub(mileages[i]));
+            if(mileages[i] > 0) mileage.use(msg.sender, mileages[i]);
             distributeReward(addrs[i], ids[i], msg.sender, sale.seller, sale.price);
             removeUserSell(sale.seller, addrs[i], ids[i]);
 
@@ -300,6 +302,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
     struct OfferInfo {
         address offeror;
         uint256 price;
+        uint256 mileage;
     }
     mapping(address => mapping(uint256 => OfferInfo[])) public offers; //offers[addr][id]
     mapping(address => PFPInfo[]) public userOfferInfo; //userOfferInfo[offeror]
@@ -316,7 +319,8 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
     function makeOffer(
         address addr,
         uint256 id,
-        uint256 price
+        uint256 price,
+        uint256 _mileage
     ) external pfpWhitelist(addr) userWhitelist(msg.sender) returns (uint256 offerId) {
         require(price > 0);
         require(IKIP17(addr).ownerOf(id) != msg.sender);
@@ -329,9 +333,10 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
         OfferInfo[] storage os = offers[addr][id];
         offerId = os.length;
 
-        os.push(OfferInfo({offeror: msg.sender, price: price}));
+        os.push(OfferInfo({offeror: msg.sender, price: price, mileage: _mileage}));
 
-        mix.transferFrom(msg.sender, address(this), price);
+        mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
+        if(_mileage > 0) mileage.use(msg.sender, _mileage);
 
         uint256 lastIndex = userOfferInfoLength(msg.sender);
         userOfferInfo[msg.sender].push(PFPInfo({pfp: addr, id: id, price: price}));
@@ -369,7 +374,11 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
         require(_offer.offeror == msg.sender);
         delete os[offerId];
         removeUserOffer(msg.sender, addr, id);
-        mix.transfer(msg.sender, _offer.price);
+        mix.transfer(msg.sender, _offer.price.sub(_offer.mileage));
+        if(_offer.mileage > 0) {
+            mix.approve(address(mileage), _offer.mileage);
+            mileage.charge(msg.sender, _offer.mileage);
+        }
 
         emit CancelOffer(addr, id, offerId, msg.sender);
     }
@@ -474,6 +483,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
     struct Bidding {
         address bidder;
         uint256 price;
+        uint256 mileage;
     }
     mapping(address => mapping(uint256 => Bidding[])) public biddings; //bidding[addr][id]
     mapping(address => PFPInfo[]) public userBiddingInfo; //userBiddingInfo[seller]
@@ -490,7 +500,8 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
     function bid(
         address addr,
         uint256 id,
-        uint256 price
+        uint256 price,
+        uint256 _mileage
     ) external pfpWhitelist(addr) userWhitelist(msg.sender) returns (uint256 biddingId) {
         AuctionInfo storage _auction = auctions[addr][id];
         uint256 endBlock = _auction.endBlock;
@@ -505,13 +516,18 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
         } else {
             Bidding memory bestBidding = bs[biddingId - 1];
             require(bestBidding.price < price);
-            mix.transfer(bestBidding.bidder, bestBidding.price);
+            mix.transfer(bestBidding.bidder, bestBidding.price.sub(bestBidding.mileage));
+            if(bestBidding.mileage > 0) {
+                mix.approve(address(mileage), bestBidding.mileage);
+                mileage.charge(bestBidding.bidder, bestBidding.mileage);
+            }
             removeUserBidding(bestBidding.bidder, addr, id);
         }
 
-        bs.push(Bidding({bidder: msg.sender, price: price}));
+        bs.push(Bidding({bidder: msg.sender, price: price, mileage: _mileage}));
 
-        mix.transferFrom(msg.sender, address(this), price);
+        mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
+        if(_mileage > 0) mileage.use(msg.sender, _mileage);
 
         uint256 lastIndex = userBiddingInfoLength(msg.sender);
         userBiddingInfo[msg.sender].push(PFPInfo({pfp: addr, id: id, price: price}));
@@ -585,7 +601,11 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
 
             delete os[offerIds[i]];
             removeUserOffer(_offer.offeror, addrs[i], ids[i]);
-            mix.transfer(_offer.offeror, _offer.price);
+            mix.transfer(_offer.offeror, _offer.price.sub(_offer.mileage));
+            if(_offer.mileage > 0) {
+                mix.approve(address(mileage), _offer.mileage);
+                mileage.charge(_offer.offeror, _offer.mileage);
+            }
 
             emit CancelOffer(addrs[i], ids[i], offerIds[i], _offer.offeror);
             emit CancelOfferByOwner(addrs[i], ids[i], offerIds[i]);
@@ -600,7 +620,11 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
 
             if (bs.length > 0) {
                 Bidding memory bestBidding = bs[bs.length - 1];
-                mix.transfer(bestBidding.bidder, bestBidding.price);
+                mix.transfer(bestBidding.bidder, bestBidding.price.sub(bestBidding.mileage));
+                if(bestBidding.mileage > 0) {
+                    mix.approve(address(mileage), bestBidding.mileage);
+                    mileage.charge(bestBidding.bidder, bestBidding.mileage);
+                }
                 removeUserBidding(bestBidding.bidder, addrs[i], ids[i]);
                 delete biddings[addrs[i]][ids[i]];
             }
