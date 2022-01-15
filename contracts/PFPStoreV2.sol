@@ -215,6 +215,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
             IKIP17 nft = IKIP17(addrs[i]);
             require(nft.ownerOf(ids[i]) == msg.sender);
             require(nft.isApprovedForAll(msg.sender, address(this)));
+            require(!checkSelling(addrs[i], ids[i]));
 
             sales[addrs[i]][ids[i]] = Sale({seller: msg.sender, price: prices[i]});
             onSalesIndex[addrs[i]][ids[i]] = onSales[addrs[i]].length;
@@ -423,6 +424,7 @@ contract PFPStoreV2 is Ownable, IPFPStoreV2 {
         IKIP17 nft = IKIP17(addr);
         require(nft.ownerOf(id) == msg.sender);
         require(endBlock > block.number);
+        require(!checkSelling(addr, id));
         nft.transferFrom(msg.sender, address(this), id);
 
         auctions[addr][id] = AuctionInfo({seller: msg.sender, startPrice: startPrice, endBlock: endBlock});
