@@ -17,7 +17,7 @@ contract Metaverses is Ownable, IMetaverses {
         uint256 id = metaverseCount++;
         _addManager(id, msg.sender);
 
-        if(bytes(extra).length > 0) {
+        if (bytes(extra).length > 0) {
             extras[id] = extra;
             emit SetExtra(id, extra);
         }
@@ -103,8 +103,10 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => string) public extras;
 
     function setExtra(uint256 id, string calldata extra) onlyManager(id) external {
-        extras[id] = extra;
-        emit SetExtra(id, extra);
+        if (bytes(extra).length > 0) {
+            extras[id] = extra;
+            emit SetExtra(id, extra);
+        }
     }
 
     mapping(uint256 => bool) public onlyKlubsMembership;
