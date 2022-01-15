@@ -52,6 +52,7 @@ interface IMetaverses {
     function itemAddrs(uint256 id, uint256 index) view external returns (address);
     function itemAdded(uint256 id, address addr) view external returns (bool);
     function itemAddedBlocks(uint256 id, address addr) view external returns (uint256);
+    function itemEditions(uint256 id, address addr) view external returns (bool);
 
     function addItemByItemOwner(uint256 id, address addr, bool edition) external;
     function addItemByMinter(uint256 id, address addr, bool edition) external;
