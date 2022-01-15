@@ -30,12 +30,12 @@ contract Metaverses is Ownable, IMetaverses {
     }
 
     modifier onlyManager(uint256 id) {
-        require(isOwner() == true || existsManager(id, msg.sender) == true);
+        require(existsManager(id, msg.sender) || isOwner());
         _;
     }
 
     function addManager(uint256 id, address manager) onlyManager(id) external {
-        require(existsManager(id, manager) != true);
+        require(!existsManager(id, manager));
         managersIndex[id][manager] = managers[id].length;
         managers[id].push(manager);
         managerMetaversesIndex[manager][id] = managerMetaverses[manager].length;
@@ -44,7 +44,7 @@ contract Metaverses is Ownable, IMetaverses {
     }
 
     function removeManager(uint256 id, address manager) onlyManager(id) external {
-        require(manager != msg.sender && existsManager(id, manager) == true);
+        require(manager != msg.sender && existsManager(id, manager));
 
         uint256 lastIndex = managers[id].length.sub(1);
         require(lastIndex != 0);
@@ -155,8 +155,8 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => mapping(address => uint256)) public itemAddedBlocks;
     mapping(uint256 => mapping(address => bool)) public itemEditions;
 
-    function addItem(uint256 id, address addr, bool edition) private {
-        require(itemAdded[id][addr] != true);
+    function _addItem(uint256 id, address addr, bool edition) private {
+        require(!itemAdded[id][addr]);
 
         itemAddrs[id].push(addr);
         itemAdded[id][addr] = true;
@@ -167,17 +167,17 @@ contract Metaverses is Ownable, IMetaverses {
     }
 
     function addItemByOwner(uint256 id, address addr, bool edition) onlyOwner public {
-        addItem(id, addr, edition);
+        _addItem(id, addr, edition);
     }
 
     function addItemByItemOwner(uint256 id, address addr, bool edition) onlyManager(id) external {
         require(Ownable(addr).owner() == msg.sender);
-        addItem(id, addr, edition);
+        _addItem(id, addr, edition);
     }
 
     function addItemByMinter(uint256 id, address addr, bool edition) onlyManager(id) external {
-        require(MinterRole(addr).isMinter(msg.sender) == true);
-        addItem(id, addr, edition);
+        require(MinterRole(addr).isMinter(msg.sender));
+        _addItem(id, addr, edition);
     }
 
     mapping(uint256 => mapping(address => bool)) public itemEnumerables;
@@ -189,7 +189,7 @@ contract Metaverses is Ownable, IMetaverses {
     }
 
     function setItemTotalSupply(uint256 id, address addr, uint256 totalSupply) onlyManager(id) external {
-        if (itemEnumerables[id][addr] == true) {
+        if (itemEnumerables[id][addr]) {
             setItemEnumerable(id, addr, false);
         }
         itemTotalSupplies[id][addr] = totalSupply;
@@ -197,7 +197,7 @@ contract Metaverses is Ownable, IMetaverses {
     }
 
     function getItemTotalSupply(uint256 id, address addr) view external returns (uint256) {
-        if (itemEnumerables[id][addr] == true) {
+        if (itemEnumerables[id][addr]) {
             return IKIP17Enumerable(addr).totalSupply();
         } else {
             return itemTotalSupplies[id][addr];
