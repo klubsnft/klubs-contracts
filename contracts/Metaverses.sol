@@ -103,10 +103,9 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => string) public extras;
 
     function setExtra(uint256 id, string calldata extra) onlyManager(id) external {
-        if (bytes(extra).length > 0) {
-            extras[id] = extra;
-            emit SetExtra(id, extra);
-        }
+        require(bytes(extra).length > 0);
+        extras[id] = extra;
+        emit SetExtra(id, extra);
     }
 
     mapping(uint256 => bool) public onlyKlubsMembership;
