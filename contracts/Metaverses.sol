@@ -197,6 +197,13 @@ contract Metaverses is Ownable, IMetaverses {
         }
     }
 
+    function updateItemType(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
+        require(_itemManagingRoleCheck(addr));
+        require(itemTypes[id][addr] != itemType);
+        
+        itemTypes[id][addr] = itemType;
+    }
+
     function _itemManagingRoleCheck(address addr) internal view returns (bool) {
         if(isOwner()) return true;
         else if(Address.isContract(addr)) {
