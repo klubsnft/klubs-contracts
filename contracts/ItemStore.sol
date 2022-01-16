@@ -252,6 +252,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id;
         uint256 amount;
         uint256 unitPrice;
+        bool partialBuying;
     }
 
     struct SaleInfo {
@@ -314,13 +315,15 @@ contract ItemStore is Ownable, IItemStore {
         address[] calldata items,
         uint256[] calldata ids,
         uint256[] calldata amounts,
-        uint256[] calldata unitPrices
+        uint256[] calldata unitPrices,
+        bool[] calldata partialBuyings
     ) external userWhitelist(msg.sender) {
         require(
             metaverseIds.length == items.length &&
                 metaverseIds.length == ids.length &&
                 metaverseIds.length == amounts.length &&
-                metaverseIds.length == unitPrices.length
+                metaverseIds.length == unitPrices.length &&
+                metaverseIds.length == partialBuyings.length 
         );
         uint256 metaverseCount = metaverses.metaverseCount();
         for (uint256 i = 0; i < metaverseIds.length; i++) {
@@ -334,7 +337,7 @@ contract ItemStore is Ownable, IItemStore {
             bytes32 hash = keccak256(abi.encodePacked(items[i], ids[i]));
             uint256 saleId = sales[hash].length;
             sales[hash].push(
-                Sale({seller: msg.sender, metaverseId: metaverseId, item: items[i], id: ids[i], amount: amounts[i], unitPrice: unitPrices[i]})
+                Sale({seller: msg.sender, metaverseId: metaverseId, item: items[i], id: ids[i], amount: amounts[i], unitPrice: unitPrices[i], partialBuying: partialBuyings[i]})
             );
 
             SaleInfo memory _info = SaleInfo({hash: hash, saleId: saleId});
@@ -351,7 +354,7 @@ contract ItemStore is Ownable, IItemStore {
             bytes32 iisHash = keccak256(abi.encodePacked(items[i], ids[i], msg.sender));
             userOnSaleAmounts[iisHash] = userOnSaleAmounts[iisHash].add(amounts[i]);
 
-            emit Sell(metaverseId, items[i], ids[i], msg.sender, amounts[i], unitPrices[i], hash, saleId);
+            emit Sell(metaverseId, items[i], ids[i], msg.sender, amounts[i], unitPrices[i], partialBuyings[i], hash, saleId);
         }
     }
 
@@ -397,8 +400,13 @@ contract ItemStore is Ownable, IItemStore {
         for (uint256 i = 0; i < hashes.length; i++) {
             Sale memory sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller != address(0) && sale.seller != msg.sender);
-            require(sale.amount >= amounts[i]);
             require(sale.unitPrice == unitPrices[i]);
+            
+            if(!sale.partialBuying) {
+                require(sale.amount == amounts[i]);
+            } else {
+                require(sale.amount >= amounts[i]);
+            }
 
             _itemTransfer(sale.metaverseId, sale.item, sale.id, amounts[i], sale.seller, msg.sender);
             uint256 price = amounts[i].mul(unitPrices[i]);

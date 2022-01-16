@@ -8,6 +8,7 @@ interface IItemStore {
         address owner,
         uint256 amount,
         uint256 unitPrice,
+        bool partialBuying,
         bytes32 indexed hash,
         uint256 saleId
     );
