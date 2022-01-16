@@ -440,8 +440,151 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
+    //Offer
+    struct Offer {
+        address offeror;
+        uint256 metaverseId;
+        address item;
+        uint256 id;
+        uint256 amount;
+        uint256 unitPrice;
+        bool partialBuying;
+        uint256 mileage;
+    }
 
-            emit Buy(sale.metaverseId, sale.item, sale.id, sale.seller, msg.sender, amounts[i], unitPrices[i], hashes[i], saleIds[i]);
+    struct OfferInfo {
+        bytes32 hash;
+        uint256 offerId;
+    }
+
+    mapping(bytes32 => Offer[]) public offers; //offers[hash]. hash: item,id
+
+    mapping(address => OfferInfo[]) public userOfferInfo; //userOfferInfo[offeror] 오퍼러의 오퍼들 정보.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _userOfferIndex; //_userOfferIndex[offerHash][offerId]. 특정 오퍼의 userOfferInfo index.
+
+    function userOfferInfoLength(address offeror) external view returns (uint256) {
+        return userOfferInfo[offeror].length;
+    }
+
+    function offerCount(bytes32 offerHash) external view returns (uint256) {
+        return offers[offerHash].length;
+    }
+
+    function canOffer(
+        address offeror,
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount
+    ) public view returns (bool) {
+        if (_isERC1155(metaverseId, item)) {
+            require(amount > 0);
+        } else {
+            require(amount == 1);
+            require(IKIP17(item).ownerOf(id) != offeror);
         }
+    }
+
+    function makeOffer(
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount,
+        uint256 unitPrice,
+        bool partialBuying,
+        uint256 _mileage
+    ) external userWhitelist(msg.sender) itemWhitelist(metaverseId, item) returns (uint256 offerId) {
+        require(unitPrice > 0 && amount > 0);
+        canOffer(msg.sender, metaverseId, item, id, amount);
+
+        bytes32 hash = keccak256(abi.encodePacked(item, id));
+
+        offerId = offers[hash].length;
+        offers[hash].push(
+            Offer({
+                offeror: msg.sender,
+                metaverseId: metaverseId,
+                item: item,
+                id: id,
+                amount: amount,
+                unitPrice: unitPrice,
+                partialBuying: partialBuying,
+                mileage: _mileage
+            })
+        );
+
+        _userOfferIndex[hash][offerId] = userOfferInfo[msg.sender].length;
+        userOfferInfo[msg.sender].push(OfferInfo({hash: hash, offerId: offerId}));
+
+        mix.transferFrom(msg.sender, address(this), amount.mul(unitPrice).sub(_mileage));
+        if (_mileage > 0) mileage.use(msg.sender, _mileage);
+
+        emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, hash, offerId);
+    }
+
+    function cancelOffer(bytes32 hash, uint256 offerId) external {
+        Offer memory _offer = offers[hash][offerId];
+        require(_offer.offeror == msg.sender);
+
+        _removeOffer(hash, offerId);
+
+        mix.transfer(msg.sender, _offer.amount.mul(_offer.unitPrice).sub(_offer.mileage));
+        if (_offer.mileage > 0) {
+            mix.approve(address(mileage), _offer.mileage);
+            mileage.charge(msg.sender, _offer.mileage);
+        }
+
+        emit CancelOffer(_offer.metaverseId, _offer.item, _offer.id, msg.sender, _offer.amount, hash, offerId);
+    }
+
+    function _removeOffer(bytes32 hash, uint256 offerId) private {
+        Offer memory _offer = offers[hash][offerId];
+
+        //delete userOfferInfo
+        uint256 lastIndex = userOfferInfo[_offer.offeror].length.sub(1);
+        uint256 index = _userOfferIndex[hash][offerId];
+        if (index != lastIndex) {
+            OfferInfo memory lastOffer = userOfferInfo[_offer.offeror][lastIndex];
+            userOfferInfo[_offer.offeror][index] = lastOffer;
+            _userOfferIndex[lastOffer.hash][lastOffer.offerId] = index;
+        }
+        userOfferInfo[_offer.offeror].length--;
+        delete _userOfferIndex[hash][offerId];
+
+        //delete sales
+        lastIndex = offers[hash].length.sub(1);
+        if (offerId != lastIndex) offers[hash][offerId] = offers[hash][lastIndex];
+        offers[hash].length--;
+    }
+
+    function acceptOffer(
+        bytes32 hash,
+        uint256 offerId,
+        uint256 amount
+    ) external userWhitelist(msg.sender) {
+        Offer memory _offer = offers[hash][offerId];
+        require(_offer.offeror != address(0) && _offer.offeror != msg.sender);
+
+        if (!_offer.partialBuying) {
+            require(_offer.amount == amount);
+        } else {
+            require(_offer.amount >= amount);
+        }
+
+        _itemTransfer(_offer.metaverseId, _offer.item, _offer.id, amount, msg.sender, _offer.offeror);
+        uint256 price = amount.mul(_offer.unitPrice);
+
+        _distributeReward(_offer.metaverseId, _offer.offeror, msg.sender, price);
+
+        uint256 amountLeft = _offer.amount.sub(amount);
+        offers[hash][offerId].amount = amountLeft;
+
+        bool isFulfilled = false;
+        if (amountLeft == 0) {
+            _removeOffer(hash, offerId);
+            isFulfilled = true;
+        }
+
+        emit AcceptOffer(_offer.metaverseId, _offer.item, _offer.id, _offer.offeror, msg.sender, _offer.amount, _offer.unitPrice, hash, offerId, isFulfilled);
     }
 }
