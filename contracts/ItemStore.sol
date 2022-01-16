@@ -12,12 +12,6 @@ import "./interfaces/IMileage.sol";
 contract ItemStore is Ownable, IItemStore {
     using SafeMath for uint256;
 
-    struct ItemInfo {
-        uint256 metaverseId;
-        uint256 id;
-        uint256 price;
-    }
-
     uint256 public fee = 250;
     address public feeReceiver;
     uint256 public auctionExtensionInterval = 300;
@@ -26,7 +20,11 @@ contract ItemStore is Ownable, IItemStore {
     IMix public mix;
     IMileage public mileage;
 
-    constructor(IMetaverses _metaverses, IMix _mix, IMileage _mileage) public {
+    constructor(
+        IMetaverses _metaverses,
+        IMix _mix,
+        IMileage _mileage
+    ) public {
         feeReceiver = msg.sender;
         metaverses = _metaverses;
         mix = _mix;
@@ -78,69 +76,118 @@ contract ItemStore is Ownable, IItemStore {
         _;
     }
 
+    function _isERC1155(uint256 metaverseId, address item) internal view returns (bool) {
+        return metaverses.itemTypes(metaverseId, item) == IMetaverses.ItemType.ERC1155;
+    }
+
     function batchTransfer(
         uint256[] calldata metaverseIds,
-        address[] calldata addrs,
+        address[] calldata items,
         uint256[] calldata ids,
         address[] calldata to,
-        uint256[] calldata counts
+        uint256[] calldata amounts
     ) external userWhitelist(msg.sender) {
         require(
-            metaverseIds.length == addrs.length &&
-            metaverseIds.length == ids.length &&
-            metaverseIds.length == to.length &&
-            metaverseIds.length == counts.length
+            metaverseIds.length == items.length &&
+                metaverseIds.length == ids.length &&
+                metaverseIds.length == to.length &&
+                metaverseIds.length == amounts.length
         );
         uint256 metaverseCount = metaverses.metaverseCount();
         for (uint256 i = 0; i < metaverseIds.length; i++) {
             uint256 metaverseId = metaverseIds[i];
             require(metaverseId < metaverseCount && !metaverses.banned(metaverseId));
-            require(metaverses.itemAdded(metaverseId, addrs[i]));
-            if (metaverses.itemTypes(metaverseId, addrs[i]) == IMetaverses.ItemType.ERC1155) {
-                IKIP37(addrs[i]).safeTransferFrom(msg.sender, to[i], ids[i], counts[i], "");
-            } else {
-                IKIP17(addrs[i]).transferFrom(msg.sender, to[i], ids[i]);
-            }
+            require(metaverses.itemAdded(metaverseId, items[i]));
+            _itemTransfer(metaverseId, items[i], ids[i], amounts[i], msg.sender, to[i]);
         }
     }
 
-    function removeSale(uint256 metaverseId, address addr, uint256 id) private {
-        if (checkSelling(metaverseId, addr, id) == true) {
-            uint256 lastIndex = onSalesCount(metaverseId, addr).sub(1);
-            uint256 index = onSalesIndex[metaverseId][addr][id];
-            if (index != lastIndex) {
-                uint256 last = onSales[metaverseId][addr][lastIndex];
-                onSales[metaverseId][addr][index] = last;
-                onSalesIndex[metaverseId][addr][last] = index;
-            }
-            onSales[metaverseId][addr].length--;
-            delete onSalesIndex[metaverseId][addr][id];
-        }
-        delete sales[metaverseId][addr][id];
-    }
-
-    function removeAuction(uint256 metaverseId, address addr, uint256 id) private {
-        if (checkAuction(metaverseId, addr, id) == true) {
-            uint256 lastIndex = onAuctionsCount(metaverseId, addr).sub(1);
-            uint256 index = onAuctionsIndex[metaverseId][addr][id];
-            if (index != lastIndex) {
-                uint256 last = onAuctions[metaverseId][addr][lastIndex];
-                onAuctions[metaverseId][addr][index] = last;
-                onAuctionsIndex[metaverseId][addr][last] = index;
-            }
-            onAuctions[metaverseId][addr].length--;
-            delete onAuctionsIndex[metaverseId][addr][id];
-        }
-        delete auctions[metaverseId][addr][id];
-    }
-
-    function distributeReward(
+    function _itemTransfer(
         uint256 metaverseId,
-        address addr,
+        address item,
         uint256 id,
+        uint256 amount,
+        address from,
+        address to
+    ) internal {
+        if (_isERC1155(metaverseId, item)) {
+            require(amount > 0);
+            IKIP37(item).safeTransferFrom(from, to, id, amount, "");
+        } else {
+            require(amount == 1);
+            IKIP17(item).transferFrom(from, to, id);
+        }
+    }
+
+    function _removeSale(bytes32 hash, uint256 saleId) private {
+        Sale memory sale = sales[hash][saleId];
+        // require(sale.seller != address(0));
+
+        //delete onSales
+        uint256 lastIndex = onSales[sale.item].length.sub(1);
+        uint256 index = _onSalesIndex[hash][saleId];
+        if (index != lastIndex) {
+            SaleInfo memory lastSale = onSales[sale.item][lastIndex];
+            onSales[sale.item][index] = lastSale;
+            _onSalesIndex[lastSale.hash][lastSale.saleId] = index;
+        }
+        onSales[sale.item].length--;
+        delete _onSalesIndex[hash][saleId];
+
+        //delete userSellInfo
+        lastIndex = userSellInfo[sale.seller].length.sub(1);
+        index = _userSellIndex[hash][saleId];
+        if (index != lastIndex) {
+            SaleInfo memory lastSale = userSellInfo[sale.seller][lastIndex];
+            userSellInfo[sale.seller][index] = lastSale;
+            _userSellIndex[lastSale.hash][lastSale.saleId] = index;
+        }
+        userSellInfo[sale.seller].length--;
+        delete _userSellIndex[hash][saleId];
+
+        //delete salesOnMetaverse
+        lastIndex = salesOnMetaverse[sale.metaverseId].length.sub(1);
+        index = _salesOnMvIndex[hash][saleId];
+        if (index != lastIndex) {
+            SaleInfo memory lastSale = salesOnMetaverse[sale.metaverseId][lastIndex];
+            salesOnMetaverse[sale.metaverseId][index] = lastSale;
+            _salesOnMvIndex[lastSale.hash][lastSale.saleId] = index;
+        }
+        salesOnMetaverse[sale.metaverseId].length--;
+        delete _salesOnMvIndex[hash][saleId];
+
+        //delete sales
+        lastIndex = sales[hash].length.sub(1);
+        if (saleId != lastIndex) sales[hash][saleId] = sales[hash][lastIndex];
+        sales[hash].length--;
+
+        //subtract amounts
+        bytes32 iisHash = keccak256(abi.encodePacked(sale.item, sale.id, msg.sender));
+        userOnSaleAmounts[iisHash] = userOnSaleAmounts[iisHash].sub(sale.amount);
+    }
+
+    function _removeAuction(
+        bytes32 hash, uint256 auctionId
+    ) private {
+        // if (checkAuction(metaverseId, addr, id) == true) {
+        //     uint256 lastIndex = onAuctionsCount(metaverseId, addr).sub(1);
+        //     uint256 index = onAuctionsIndex[metaverseId][addr][id];
+        //     if (index != lastIndex) {
+        //         uint256 last = onAuctions[metaverseId][addr][lastIndex];
+        //         onAuctions[metaverseId][addr][index] = last;
+        //         onAuctionsIndex[metaverseId][addr][last] = index;
+        //     }
+        //     onAuctions[metaverseId][addr].length--;
+        //     delete onAuctionsIndex[metaverseId][addr][id];
+        // }
+        // delete auctions[metaverseId][addr][id];
+    }
+
+    function _distributeReward(
+        uint256 metaverseId,
         address buyer,
-        address to,
-        uint256 amount
+        address seller,
+        uint256 price
     ) private {
         (address receiver, uint256 royalty) = metaverses.royalties(metaverseId);
 
@@ -150,8 +197,8 @@ contract ItemStore is Ownable, IItemStore {
 
         if (metaverses.mileageMode(metaverseId)) {
             if (metaverses.onlyKlubsMembership(metaverseId)) {
-                uint256 mileageFromFee = amount.mul(mileage.onlyKlubsPercent()).div(1e4);
-                _fee = amount.mul(fee).div(1e4);
+                uint256 mileageFromFee = price.mul(mileage.onlyKlubsPercent()).div(1e4);
+                _fee = price.mul(fee).div(1e4);
 
                 if (_fee > mileageFromFee) {
                     _mileage = mileageFromFee;
@@ -161,8 +208,8 @@ contract ItemStore is Ownable, IItemStore {
                     _fee = 0;
                 }
 
-                uint256 mileageFromRoyalty = amount.mul(mileage.mileagePercent()).div(1e4).sub(mileageFromFee);
-                _royalty = amount.mul(royalty).div(1e4);
+                uint256 mileageFromRoyalty = price.mul(mileage.mileagePercent()).div(1e4).sub(mileageFromFee);
+                _royalty = price.mul(royalty).div(1e4);
 
                 if (_royalty > mileageFromRoyalty) {
                     _mileage = _mileage.add(mileageFromRoyalty);
@@ -172,9 +219,9 @@ contract ItemStore is Ownable, IItemStore {
                     _royalty = 0;
                 }
             } else {
-                _fee = amount.mul(fee).div(1e4);
-                _mileage = amount.mul(mileage.mileagePercent()).div(1e4);
-                _royalty = amount.mul(royalty).div(1e4);
+                _fee = price.mul(fee).div(1e4);
+                _mileage = price.mul(mileage.mileagePercent()).div(1e4);
+                _royalty = price.mul(royalty).div(1e4);
 
                 if (_royalty > _mileage) {
                     _royalty = _royalty.sub(_mileage);
@@ -184,8 +231,8 @@ contract ItemStore is Ownable, IItemStore {
                 }
             }
         } else {
-            _fee = amount.mul(fee).div(1e4);
-            _royalty = amount.mul(royalty).div(1e4);
+            _fee = price.mul(fee).div(1e4);
+            _royalty = price.mul(royalty).div(1e4);
         }
 
         if (_fee > 0) mix.transfer(feeReceiver, _fee);
@@ -195,150 +242,177 @@ contract ItemStore is Ownable, IItemStore {
             mileage.charge(buyer, _mileage);
         }
 
-        mix.transfer(to, amount.sub(_fee).sub(_royalty).sub(_mileage));
-
-        removeSale(metaverseId, addr, id);
-        removeAuction(metaverseId, addr, id);
-        delete biddings[metaverseId][addr][id];
+        mix.transfer(seller, price.sub(_fee).sub(_royalty).sub(_mileage));
     }
 
     struct Sale {
         address seller;
-        uint256 price;
-    }
-    mapping(uint256 => mapping(address => mapping(uint256 => Sale))) public sales; //sales[metaverseId][addr][id]
-    mapping(uint256 => mapping(address => uint256[])) public onSales;
-    mapping(uint256 => mapping(address => mapping(uint256 => uint256))) public onSalesIndex;
-    mapping(address => ItemInfo[]) public userSellInfo; //userSellInfo[seller]
-    mapping(address => mapping(uint256 => uint256)) private userSellIndex; //userSellIndex[addr][id]
-
-    function onSalesCount(uint256 metaverseId, address addr) public view returns (uint256) {
-        return onSales[metaverseId][addr].length;
+        uint256 metaverseId;
+        address item;
+        uint256 id;
+        uint256 amount;
+        uint256 unitPrice;
     }
 
-    function userSellInfoLength(address seller) public view returns (uint256) {
+    struct SaleInfo {
+        bytes32 hash;
+        uint256 saleId;
+    }
+
+    mapping(bytes32 => Sale[]) public sales; //sales[hash]. hash: item,id
+
+    mapping(address => SaleInfo[]) public onSales; //onSales[item]. 아이템 계약 중 onSale 중인 정보들.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _onSalesIndex; //_onSalesIndex[saleHash][saleId]. 특정 세일의 onSales index.
+
+    mapping(address => SaleInfo[]) public userSellInfo; //userSellInfo[seller] 셀러가 팔고있는 세일의 정보.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _userSellIndex; //_userSellIndex[saleHash][saleId]. 특정 세일의 userSellInfo index.
+
+    mapping(uint256 => SaleInfo[]) public salesOnMetaverse; //salesOnMetaverse[metaverseId]. 특정 메타버스에서 판매되고있는 모든 세일들.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _salesOnMvIndex; //_salesOnMvIndex[saleHash][saleId]. 특정 세일의 salesOnMetaverse index.
+
+    mapping(bytes32 => uint256) public userOnSaleAmounts; //userSaleAmounts[iisHash]. iisHash: item,id,seller. 셀러가 판매중인 특정 id의 아이템의 총 합.
+
+    //TODO 한번에 모든 배열이 불러와지지 않는 경우 대비.
+
+    function onSalesCount(address item) external view returns (uint256) {
+        return onSales[item].length;
+    }
+
+    function userSellInfoLength(address seller) external view returns (uint256) {
         return userSellInfo[seller].length;
     }
 
-    function checkSelling(uint256 metaverseId, address addr, uint256 id) public view returns (bool) {
-        return sales[metaverseId][addr][id].seller != address(0);
+    function userSalesOnMetaverseLength(uint256 metaverseId) external view returns (uint256) {
+        return salesOnMetaverse[metaverseId].length;
+    }
+
+    function canSell(
+        address seller,
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount
+    ) public view returns (bool) {
+        if (_isERC1155(metaverseId, item)) {
+            require(amount > 0);
+            IKIP37 nft = IKIP37(item);
+            require(nft.isApprovedForAll(seller, address(this)));
+            bytes32 hash = keccak256(abi.encodePacked(item, id, seller));
+            require(userOnSaleAmounts[hash].add(amount) <= nft.balanceOf(seller, id));
+        } else {
+            require(amount == 1);
+            IKIP17 nft = IKIP17(item);
+            require(nft.ownerOf(id) == seller);
+            require(nft.isApprovedForAll(seller, address(this)));
+            bytes32 hash = keccak256(abi.encodePacked(item, id, seller));
+            require(userOnSaleAmounts[hash] == 0);
+        }
     }
 
     function sell(
         uint256[] calldata metaverseIds,
-        address[] calldata addrs,
+        address[] calldata items,
         uint256[] calldata ids,
-        uint256[] calldata prices,
-        uint256[] calldata counts
+        uint256[] calldata amounts,
+        uint256[] calldata unitPrices
     ) external userWhitelist(msg.sender) {
         require(
-            metaverseIds.length == addrs.length &&
-            metaverseIds.length == ids.length &&
-            metaverseIds.length == prices.length &&
-            metaverseIds.length == counts.length
+            metaverseIds.length == items.length &&
+                metaverseIds.length == ids.length &&
+                metaverseIds.length == amounts.length &&
+                metaverseIds.length == unitPrices.length
         );
         uint256 metaverseCount = metaverses.metaverseCount();
         for (uint256 i = 0; i < metaverseIds.length; i++) {
             uint256 metaverseId = metaverseIds[i];
             require(metaverseId < metaverseCount && !metaverses.banned(metaverseId));
-            require(metaverses.itemAdded(metaverseId, addrs[i]));
-            require(prices[i] > 0);
+            require(metaverses.itemAdded(metaverseId, items[i]));
+            require(unitPrices[i] > 0);
 
-            if (metaverses.itemTypes(metaverseId, addrs[i]) == IMetaverses.ItemType.ERC1155) {
-                IKIP37 nft = IKIP37(addrs[i]);
-                uint256 count = counts[i];
-                require(count > 0 && nft.balanceOf(msg.sender, ids[i]) >= counts[i]);
-                require(nft.isApprovedForAll(msg.sender, address(this)));
-                require(!checkSelling(metaverseId, addrs[i], ids[i]));
-            } else {
-                IKIP17 nft = IKIP17(addrs[i]);
-                require(nft.ownerOf(ids[i]) == msg.sender);
-                require(nft.isApprovedForAll(msg.sender, address(this)));
-                require(!checkSelling(metaverseId, addrs[i], ids[i]));
-            }
+            canSell(msg.sender, metaverseId, items[i], ids[i], amounts[i]);
 
-            sales[metaverseId][addrs[i]][ids[i]] = Sale({seller: msg.sender, price: prices[i]});
-            onSalesIndex[metaverseId][addrs[i]][ids[i]] = onSales[addrs[i]].length;
-            onSales[metaverseId][addrs[i]].push(ids[i]);
+            bytes32 hash = keccak256(abi.encodePacked(items[i], ids[i]));
+            uint256 saleId = sales[hash].length;
+            sales[hash].push(
+                Sale({seller: msg.sender, metaverseId: metaverseId, item: items[i], id: ids[i], amount: amounts[i], unitPrice: unitPrices[i]})
+            );
 
-            uint256 lastIndex = userSellInfoLength(msg.sender);
-            userSellInfo[msg.sender].push(ItemInfo({metaverseId: metaverseId, pfp: addrs[i], id: ids[i], price: prices[i]}));
-            userSellIndex[addrs[i]][ids[i]] = lastIndex;
+            SaleInfo memory _info = SaleInfo({hash: hash, saleId: saleId});
 
-            emit Sell(metaverseId, addrs[i], ids[i], msg.sender, prices[i]);
+            _onSalesIndex[hash][saleId] = onSales[items[i]].length;
+            onSales[items[i]].push(_info);
+
+            _userSellIndex[hash][saleId] = userSellInfo[msg.sender].length;
+            userSellInfo[msg.sender].push(_info);
+
+            _salesOnMvIndex[hash][saleId] = salesOnMetaverse[metaverseId].length;
+            salesOnMetaverse[metaverseId].push(_info);
+
+            bytes32 iisHash = keccak256(abi.encodePacked(items[i], ids[i], msg.sender));
+            userOnSaleAmounts[iisHash] = userOnSaleAmounts[iisHash].add(amounts[i]);
+
+            emit Sell(metaverseId, items[i], ids[i], msg.sender, amounts[i], unitPrices[i], hash, saleId);
         }
     }
 
     function changeSellPrice(
-        uint256[] calldata metaverseIds,
-        address[] calldata addrs,
-        uint256[] calldata ids,
-        uint256[] calldata prices
+        bytes32[] calldata hashes,
+        uint256[] calldata saleIds,
+        uint256[] calldata unitPrices
     ) external userWhitelist(msg.sender) {
-        require(addrs.length == ids.length && addrs.length == prices.length);
-        for (uint256 i = 0; i < addrs.length; i++) {
-            Sale storage sale = sales[addrs[i]][ids[i]];
+        require(hashes.length == saleIds.length && hashes.length == unitPrices.length);
+        for (uint256 i = 0; i < hashes.length; i++) {
+            Sale storage sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller == msg.sender);
-            sale.price = prices[i];
-            userSellInfo[msg.sender][userSellIndex[addrs[i]][ids[i]]].price = prices[i];
-            emit ChangeSellPrice(addrs[i], ids[i], msg.sender, prices[i]);
+            require(sale.unitPrice != unitPrices[i]);
+            sale.unitPrice = unitPrices[i];
+            emit ChangeSellPrice(sale.metaverseId, sale.item, sale.id, msg.sender, unitPrices[i], hashes[i], saleIds[i]);
         }
     }
 
-    function removeUserSell(
-        address seller,
-        uint256 metaverseId,
-        address addr,
-        uint256 id
-    ) internal {
-        uint256 lastSellIndex = userSellInfoLength(seller).sub(1);
-        uint256 sellIndex = userSellIndex[addr][id];
+    function cancelSale(bytes32[] calldata hashes, uint256[] calldata saleIds) external {
+        require(hashes.length == saleIds.length);
+        for (uint256 i = 0; i < hashes.length; i++) {
+            Sale memory sale = sales[hashes[i]][saleIds[i]];
+            require(sale.seller == msg.sender);
 
-        if (sellIndex != lastSellIndex) {
-            PFPInfo memory lastSellInfo = userSellInfo[seller][lastSellIndex];
-
-            userSellInfo[seller][sellIndex] = lastSellInfo;
-            userSellIndex[lastSellInfo.pfp][lastSellInfo.id] = sellIndex;
-        }
-
-        userSellInfo[seller].length--;
-        delete userSellIndex[addr][id];
-    }
-
-    function cancelSale(uint256[] calldata metaverseIds, address[] calldata addrs, uint256[] calldata ids) external {
-        require(addrs.length == ids.length);
-        for (uint256 i = 0; i < addrs.length; i++) {
-            address seller = sales[addrs[i]][ids[i]].seller;
-            require(seller == msg.sender);
-
-            removeSale(addrs[i], ids[i]);
-            removeUserSell(seller, addrs[i], ids[i]);
-
-            emit CancelSale(addrs[i], ids[i], msg.sender);
+            _removeSale(hashes[i], saleIds[i]);
+            emit CancelSale(sale.metaverseId, sale.item, sale.id, msg.sender, sale.amount, hashes[i], saleIds[i]);
         }
     }
 
     function buy(
-        uint256[] calldata metaverseIds,
-        address[] calldata addrs,
-        uint256[] calldata ids,
-        uint256[] calldata prices,
+        bytes32[] calldata hashes,
+        uint256[] calldata saleIds,
+        uint256[] calldata amounts,
+        uint256[] calldata unitPrices,
         uint256[] calldata mileages
     ) external userWhitelist(msg.sender) {
-        require(addrs.length == ids.length && addrs.length == prices.length);
-        for (uint256 i = 0; i < addrs.length; i++) {
-            Sale memory sale = sales[addrs[i]][ids[i]];
+        require(
+            hashes.length == saleIds.length &&
+                hashes.length == amounts.length &&
+                hashes.length == unitPrices.length &&
+                hashes.length == mileages.length
+        );
+        for (uint256 i = 0; i < hashes.length; i++) {
+            Sale memory sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller != address(0) && sale.seller != msg.sender);
-            require(sale.price == prices[i]);
+            require(sale.amount >= amounts[i]);
+            require(sale.unitPrice == unitPrices[i]);
 
-            IKIP17(addrs[i]).transferFrom(sale.seller, msg.sender, ids[i]);
+            _itemTransfer(sale.metaverseId, sale.item, sale.id, amounts[i], sale.seller, msg.sender);
+            uint256 price = amounts[i].mul(unitPrices[i]);
 
-            mix.transferFrom(msg.sender, address(this), sale.price.sub(mileages[i]));
-            if(mileages[i] > 0) mileage.use(msg.sender, mileages[i]);
-            distributeReward(addrs[i], ids[i], msg.sender, sale.seller, sale.price);
-            removeUserSell(sale.seller, addrs[i], ids[i]);
+            mix.transferFrom(msg.sender, address(this), price.sub(mileages[i]));
+            if (mileages[i] > 0) mileage.use(msg.sender, mileages[i]);
+            _distributeReward(sale.metaverseId, msg.sender, sale.seller, price);
 
-            emit Buy(addrs[i], ids[i], msg.sender, sale.price);
+            uint256 amountLeft = sale.amount.sub(amounts[i]);
+            sales[hashes[i]][saleIds[i]].amount = amountLeft;
+
+            if (amountLeft == 0) _removeSale(hashes[i], saleIds[i]);
+
+            emit Buy(sale.metaverseId, sale.item, sale.id, sale.seller, msg.sender, amounts[i], unitPrices[i], hashes[i], saleIds[i]);
         }
     }
 }
