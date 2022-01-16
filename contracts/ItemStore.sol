@@ -430,10 +430,13 @@ contract ItemStore is Ownable, IItemStore {
             bytes32 iisHash = keccak256(abi.encodePacked(sale.item, sale.id, sale.seller));
             userOnSaleAmounts[iisHash] = userOnSaleAmounts[iisHash].sub(amounts[i]);
 
+            bool isFulfilled = false;
             if (amountLeft == 0) {
                 _removeSale(hashes[i], saleIds[i]);
+                isFulfilled = true;
             }
 
+            emit Buy(sale.metaverseId, sale.item, sale.id, sale.seller, msg.sender, amounts[i], unitPrices[i], hashes[i], saleIds[i], isFulfilled);
         }
     }
 

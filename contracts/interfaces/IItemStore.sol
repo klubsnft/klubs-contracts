@@ -31,7 +31,8 @@ interface IItemStore {
         uint256 amount,
         uint256 unitPrice,
         bytes32 indexed hash,
-        uint256 saleId
+        uint256 saleId,
+        bool isFulfilled
     );
     event CancelSale(
         uint256 indexed metaverseId,
@@ -43,9 +44,38 @@ interface IItemStore {
         uint256 saleId
     );
 
-    event MakeOffer(uint256 indexed metaverseId, address indexed item, uint256 id, uint256 offerId, address offeror, uint256 unitPrice); //notyet from this
-    event CancelOffer(uint256 indexed metaverseId, address indexed item, uint256 id, uint256 offerId, address offeror);
-    event AcceptOffer(uint256 indexed metaverseId, address indexed item, uint256 id, uint256 offerId, address acceptor);
+    event MakeOffer(
+        uint256 indexed metaverseId,
+        address indexed item,
+        uint256 id,
+        address offeror,
+        uint256 amount,
+        uint256 unitPrice,
+        bool partialBuying,
+        bytes32 indexed hash,
+        uint256 offerId
+    );
+    event CancelOffer(
+        uint256 indexed metaverseId,
+        address indexed item,
+        uint256 id,
+        address offeror,
+        uint256 amount,
+        bytes32 indexed hash,
+        uint256 offerId
+    );
+    event AcceptOffer(
+        uint256 indexed metaverseId,
+        address indexed item,
+        uint256 id,
+        address offeror,
+        address acceptor,
+        uint256 amount,
+        uint256 unitPrice,
+        bytes32 indexed hash,
+        uint256 offerId,
+        bool isFulfilled
+    );
 
     event CreateAuction(uint256 indexed metaverseId, address indexed item, uint256 id, address owner, uint256 startUnitPrice, uint256 endBlock);
     event CancelAuction(uint256 indexed metaverseId, address indexed item, uint256 id, address owner);
