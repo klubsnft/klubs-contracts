@@ -187,9 +187,14 @@ contract Metaverses is Ownable, IMetaverses {
         emit AddItem(id, addr, itemType);
     }
 
-    function addItem(uint256 id, address addr, ItemType itemType) onlyManager(id) public {
+    function addItem(uint256 id, address addr, ItemType itemType, string calldata extra) onlyManager(id) external {
         require(_itemManagingRoleCheck(addr));
         _addItem(id, addr, itemType);
+
+        if (bytes(extra).length > 0) {
+            itemExtras[id][addr] = extra;
+            emit SetItemExtra(id, addr, extra);
+        }
     }
 
     function _itemManagingRoleCheck(address addr) internal view returns (bool) {
@@ -203,10 +208,15 @@ contract Metaverses is Ownable, IMetaverses {
         } else return false;
     }
 
-    function passProposal(uint256 proposalId) external {
+    function passProposal(uint256 proposalId, string calldata extra) external {
         ItemProposal memory proposal = itemProposals[proposalId];
         require(_itemManagingRoleCheck(proposal.addr));
         _addItem(proposal.id, proposal.addr, proposal.itemType);
+
+        if (bytes(extra).length > 0) {
+            itemExtras[proposal.id][proposal.addr] = extra;
+            emit SetItemExtra(proposal.id, proposal.addr, extra);
+        }
 
         delete itemProposals[proposalId];
     }
