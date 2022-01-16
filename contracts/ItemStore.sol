@@ -96,7 +96,7 @@ contract ItemStore is Ownable, IItemStore {
             uint256 metaverseId = metaverseIds[i];
             require(metaverseId < metaverseCount && !metaverses.banned(metaverseId));
             require(metaverses.itemAdded(metaverseId, addrs[i]));
-            if (metaverses.itemEditions(metaverseId, addrs[i])) {
+            if (metaverses.itemTypes(metaverseId, addrs[i]) == IMetaverses.ItemType.ERC1155) {
                 IKIP37(addrs[i]).safeTransferFrom(msg.sender, to[i], ids[i], counts[i], "");
             } else {
                 IKIP17(addrs[i]).transferFrom(msg.sender, to[i], ids[i]);
@@ -244,7 +244,7 @@ contract ItemStore is Ownable, IItemStore {
             require(metaverses.itemAdded(metaverseId, addrs[i]));
             require(prices[i] > 0);
 
-            if (metaverses.itemEditions(metaverseId, addrs[i])) {
+            if (metaverses.itemTypes(metaverseId, addrs[i]) == IMetaverses.ItemType.ERC1155) {
                 IKIP37 nft = IKIP37(addrs[i]);
                 uint256 count = counts[i];
                 require(count > 0 && nft.balanceOf(msg.sender, ids[i]) >= counts[i]);
