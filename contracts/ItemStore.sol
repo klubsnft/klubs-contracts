@@ -53,9 +53,9 @@ contract ItemStore is Ownable, IItemStore {
         _;
     }
 
-    modifier itemWhitelist(uint256 metaverseId, address addr) {
+    modifier itemWhitelist(uint256 metaverseId, address item) {
         require(metaverseId < metaverses.metaverseCount() && !metaverses.banned(metaverseId));
-        require(metaverses.itemAdded(metaverseId, addr));
+        require(metaverses.itemAdded(metaverseId, item));
         _;
     }
 
@@ -162,13 +162,13 @@ contract ItemStore is Ownable, IItemStore {
         sales[hash].length--;
 
         //subtract amounts
-        bytes32 iisHash = keccak256(abi.encodePacked(sale.item, sale.id, msg.sender));
-        userOnSaleAmounts[iisHash] = userOnSaleAmounts[iisHash].sub(sale.amount);
+        if (sale.amount > 0) {
+            bytes32 iisHash = keccak256(abi.encodePacked(sale.item, sale.id, sale.seller));
+            userOnSaleAmounts[iisHash] = userOnSaleAmounts[iisHash].sub(sale.amount);
+        }
     }
 
-    function _removeAuction(
-        bytes32 hash, uint256 auctionId
-    ) private {
+    function _removeAuction(bytes32 hash, uint256 auctionId) private {
         // if (checkAuction(metaverseId, addr, id) == true) {
         //     uint256 lastIndex = onAuctionsCount(metaverseId, addr).sub(1);
         //     uint256 index = onAuctionsIndex[metaverseId][addr][id];
@@ -245,6 +245,7 @@ contract ItemStore is Ownable, IItemStore {
         mix.transfer(seller, price.sub(_fee).sub(_royalty).sub(_mileage));
     }
 
+    //Sale
     struct Sale {
         address seller;
         uint256 metaverseId;
@@ -323,7 +324,7 @@ contract ItemStore is Ownable, IItemStore {
                 metaverseIds.length == ids.length &&
                 metaverseIds.length == amounts.length &&
                 metaverseIds.length == unitPrices.length &&
-                metaverseIds.length == partialBuyings.length 
+                metaverseIds.length == partialBuyings.length
         );
         uint256 metaverseCount = metaverses.metaverseCount();
         for (uint256 i = 0; i < metaverseIds.length; i++) {
@@ -337,7 +338,15 @@ contract ItemStore is Ownable, IItemStore {
             bytes32 hash = keccak256(abi.encodePacked(items[i], ids[i]));
             uint256 saleId = sales[hash].length;
             sales[hash].push(
-                Sale({seller: msg.sender, metaverseId: metaverseId, item: items[i], id: ids[i], amount: amounts[i], unitPrice: unitPrices[i], partialBuying: partialBuyings[i]})
+                Sale({
+                    seller: msg.sender,
+                    metaverseId: metaverseId,
+                    item: items[i],
+                    id: ids[i],
+                    amount: amounts[i],
+                    unitPrice: unitPrices[i],
+                    partialBuying: partialBuyings[i]
+                })
             );
 
             SaleInfo memory _info = SaleInfo({hash: hash, saleId: saleId});
@@ -401,8 +410,8 @@ contract ItemStore is Ownable, IItemStore {
             Sale memory sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller != address(0) && sale.seller != msg.sender);
             require(sale.unitPrice == unitPrices[i]);
-            
-            if(!sale.partialBuying) {
+
+            if (!sale.partialBuying) {
                 require(sale.amount == amounts[i]);
             } else {
                 require(sale.amount >= amounts[i]);
@@ -418,7 +427,16 @@ contract ItemStore is Ownable, IItemStore {
             uint256 amountLeft = sale.amount.sub(amounts[i]);
             sales[hashes[i]][saleIds[i]].amount = amountLeft;
 
-            if (amountLeft == 0) _removeSale(hashes[i], saleIds[i]);
+            bytes32 iisHash = keccak256(abi.encodePacked(sale.item, sale.id, sale.seller));
+            userOnSaleAmounts[iisHash] = userOnSaleAmounts[iisHash].sub(amounts[i]);
+
+            if (amountLeft == 0) {
+                _removeSale(hashes[i], saleIds[i]);
+            }
+
+        }
+    }
+
 
             emit Buy(sale.metaverseId, sale.item, sale.id, sale.seller, msg.sender, amounts[i], unitPrices[i], hashes[i], saleIds[i]);
         }
