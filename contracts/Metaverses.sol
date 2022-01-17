@@ -156,21 +156,21 @@ contract Metaverses is Ownable, IMetaverses {
     // enum ItemType { ERC1155, ERC721 }
     struct ItemProposal {
         uint256 id;
-        address addr;
+        address item;
         ItemType itemType;
         address proposer;
     }
     ItemProposal[] public itemProposals;
 
-    function proposeItem(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
+    function proposeItem(uint256 id, address item, ItemType itemType) onlyManager(id) external {
         require(id < metaverseCount);
         itemProposals.push(ItemProposal({
             id: id,
-            addr: addr,
+            item: item,
             itemType: itemType,
             proposer: msg.sender
         }));
-        emit ProposeItem(id, addr, itemType, msg.sender);
+        emit ProposeItem(id, item, itemType, msg.sender);
     }
 
     function itemProposalCount() view external returns (uint256) {
@@ -186,55 +186,55 @@ contract Metaverses is Ownable, IMetaverses {
         return itemAddrs[id].length;
     }
 
-    function _addItem(uint256 id, address addr, ItemType itemType) private {
-        require(!itemAdded[id][addr]);
+    function _addItem(uint256 id, address item, ItemType itemType) private {
+        require(!itemAdded[id][item]);
 
-        itemAddrs[id].push(addr);
-        itemAdded[id][addr] = true;
-        itemAddedBlocks[id][addr] = block.number;
-        itemTypes[id][addr] = itemType;
+        itemAddrs[id].push(item);
+        itemAdded[id][item] = true;
+        itemAddedBlocks[id][item] = block.number;
+        itemTypes[id][item] = itemType;
 
-        emit AddItem(id, addr, itemType);
+        emit AddItem(id, item, itemType);
     }
 
-    function addItem(uint256 id, address addr, ItemType itemType, string calldata extra) onlyManager(id) external {
+    function addItem(uint256 id, address item, ItemType itemType, string calldata extra) onlyManager(id) external {
         require(id < metaverseCount);
-        require(_itemManagingRoleCheck(addr));
-        _addItem(id, addr, itemType);
+        require(_itemManagingRoleCheck(item));
+        _addItem(id, item, itemType);
 
         if (bytes(extra).length > 0) {
-            itemExtras[id][addr] = extra;
-            emit SetItemExtra(id, addr, extra);
+            itemExtras[id][item] = extra;
+            emit SetItemExtra(id, item, extra);
         }
     }
 
-    function updateItemType(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
+    function updateItemType(uint256 id, address item, ItemType itemType) onlyManager(id) external {
         require(id < metaverseCount);
-        require(_itemManagingRoleCheck(addr));
-        require(itemTypes[id][addr] != itemType);
+        require(_itemManagingRoleCheck(item));
+        require(itemTypes[id][item] != itemType);
         
-        itemTypes[id][addr] = itemType;
+        itemTypes[id][item] = itemType;
     }
 
-    function _itemManagingRoleCheck(address addr) internal view returns (bool) {
+    function _itemManagingRoleCheck(address item) internal view returns (bool) {
         if(isOwner()) return true;
-        else if(Address.isContract(addr)) {
-            (bool success0, bytes memory data0) = addr.staticcall(abi.encodeWithSignature("owner()"));
+        else if(Address.isContract(item)) {
+            (bool success0, bytes memory data0) = item.staticcall(abi.encodeWithSignature("owner()"));
             if(success0 && (abi.decode(data0, (address)) == msg.sender)) return true;
 
-            (bool success1, bytes memory data1) = addr.staticcall(abi.encodeWithSignature("isMinter(address)", msg.sender));
+            (bool success1, bytes memory data1) = item.staticcall(abi.encodeWithSignature("isMinter(address)", msg.sender));
             if(success1 && (abi.decode(data1, (bool)))) return true;
         } else return false;
     }
 
     function passProposal(uint256 proposalId, string calldata extra) external {
         ItemProposal memory proposal = itemProposals[proposalId];
-        require(_itemManagingRoleCheck(proposal.addr));
-        _addItem(proposal.id, proposal.addr, proposal.itemType);
+        require(_itemManagingRoleCheck(proposal.item));
+        _addItem(proposal.id, proposal.item, proposal.itemType);
 
         if (bytes(extra).length > 0) {
-            itemExtras[proposal.id][proposal.addr] = extra;
-            emit SetItemExtra(proposal.id, proposal.addr, extra);
+            itemExtras[proposal.id][proposal.item] = extra;
+            emit SetItemExtra(proposal.id, proposal.item, extra);
         }
 
         delete itemProposals[proposalId];
@@ -242,7 +242,7 @@ contract Metaverses is Ownable, IMetaverses {
 
     function removeProposal(uint256 proposalId) external {
         ItemProposal storage proposal = itemProposals[proposalId];
-        require(existsManager(proposal.id, msg.sender) || _itemManagingRoleCheck(proposal.addr));
+        require(existsManager(proposal.id, msg.sender) || _itemManagingRoleCheck(proposal.item));
 
         delete itemProposals[proposalId];
     }
@@ -252,34 +252,34 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => mapping(address => bool)) public itemEnumerables;
     mapping(uint256 => mapping(address => uint256)) public itemTotalSupplies;
 
-    function setItemEnumerable(uint256 id, address addr, bool enumerable) onlyManager(id) public {
+    function setItemEnumerable(uint256 id, address item, bool enumerable) onlyManager(id) public {
         require(id < metaverseCount);
-        itemEnumerables[id][addr] = enumerable;
-        emit SetItemEnumerable(id, addr, enumerable);
+        itemEnumerables[id][item] = enumerable;
+        emit SetItemEnumerable(id, item, enumerable);
     }
 
-    function setItemTotalSupply(uint256 id, address addr, uint256 totalSupply) onlyManager(id) external {
+    function setItemTotalSupply(uint256 id, address item, uint256 totalSupply) onlyManager(id) external {
         require(id < metaverseCount);
-        if (itemEnumerables[id][addr]) {
-            setItemEnumerable(id, addr, false);
+        if (itemEnumerables[id][item]) {
+            setItemEnumerable(id, item, false);
         }
-        itemTotalSupplies[id][addr] = totalSupply;
-        emit SetItemTotalSupply(id, addr, totalSupply);
+        itemTotalSupplies[id][item] = totalSupply;
+        emit SetItemTotalSupply(id, item, totalSupply);
     }
 
-    function getItemTotalSupply(uint256 id, address addr) view external returns (uint256) {
-        if (itemEnumerables[id][addr]) {
-            return IKIP17Enumerable(addr).totalSupply();
+    function getItemTotalSupply(uint256 id, address item) view external returns (uint256) {
+        if (itemEnumerables[id][item]) {
+            return IKIP17Enumerable(item).totalSupply();
         } else {
-            return itemTotalSupplies[id][addr];
+            return itemTotalSupplies[id][item];
         }
     }
 
     mapping(uint256 => mapping(address => string)) public itemExtras;
 
-    function setItemExtra(uint256 id, address addr, string calldata extra) onlyManager(id) external {
+    function setItemExtra(uint256 id, address item, string calldata extra) onlyManager(id) external {
         require(id < metaverseCount);
-        itemExtras[id][addr] = extra;
-        emit SetItemExtra(id, addr, extra);
+        itemExtras[id][item] = extra;
+        emit SetItemExtra(id, item, extra);
     }
 }

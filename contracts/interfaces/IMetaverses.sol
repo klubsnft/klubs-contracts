@@ -20,11 +20,11 @@ interface IMetaverses {
     event Ban(uint256 indexed id);
     event Unban(uint256 indexed id);
 
-    event ProposeItem(uint256 indexed id, address indexed addr, ItemType itemType, address indexed proposer);
-    event AddItem(uint256 indexed id, address indexed addr, ItemType itemType);
-    event SetItemEnumerable(uint256 indexed id, address indexed addr, bool enumerable);
-    event SetItemTotalSupply(uint256 indexed id, address indexed addr, uint256 totalSupply);
-    event SetItemExtra(uint256 indexed id, address indexed addr, string extra);
+    event ProposeItem(uint256 indexed id, address indexed item, ItemType itemType, address indexed proposer);
+    event AddItem(uint256 indexed id, address indexed item, ItemType itemType);
+    event SetItemEnumerable(uint256 indexed id, address indexed item, bool enumerable);
+    event SetItemTotalSupply(uint256 indexed id, address indexed item, uint256 totalSupply);
+    event SetItemExtra(uint256 indexed id, address indexed item, string extra);
 
     function addMetaverse(string calldata extra) external;
     function metaverseCount() view external returns (uint256);
@@ -50,25 +50,25 @@ interface IMetaverses {
     function mileageOff(uint256 id) external;
     function banned(uint256 id) view external returns (bool);
 
-    function proposeItem(uint256 id, address addr, ItemType itemType) external;
+    function proposeItem(uint256 id, address item, ItemType itemType) external;
     function itemProposalCount() view external returns (uint256);
 
     function itemAddrCount(uint256 id) view external returns (uint256);
     function itemAddrs(uint256 id, uint256 index) view external returns (address);
-    function itemAdded(uint256 id, address addr) view external returns (bool);
-    function itemAddedBlocks(uint256 id, address addr) view external returns (uint256);
-    function itemTypes(uint256 id, address addr) view external returns (ItemType);
+    function itemAdded(uint256 id, address item) view external returns (bool);
+    function itemAddedBlocks(uint256 id, address item) view external returns (uint256);
+    function itemTypes(uint256 id, address item) view external returns (ItemType);
 
-    function addItem(uint256 id, address addr, ItemType itemType, string calldata extra) external;
+    function addItem(uint256 id, address item, ItemType itemType, string calldata extra) external;
     function passProposal(uint256 proposalId, string calldata extra) external;
     function removeProposal(uint256 proposalId) external;
 
-    function itemEnumerables(uint256 id, address addr) view external returns (bool);
-    function setItemEnumerable(uint256 id, address addr, bool enumerable) external;
-    function itemTotalSupplies(uint256 id, address addr) view external returns (uint256);
-    function setItemTotalSupply(uint256 id, address addr, uint256 totalSupply) external;
-    function getItemTotalSupply(uint256 id, address addr) view external returns (uint256);
+    function itemEnumerables(uint256 id, address item) view external returns (bool);
+    function setItemEnumerable(uint256 id, address item, bool enumerable) external;
+    function itemTotalSupplies(uint256 id, address item) view external returns (uint256);
+    function setItemTotalSupply(uint256 id, address item, uint256 totalSupply) external;
+    function getItemTotalSupply(uint256 id, address item) view external returns (uint256);
 
-    function itemExtras(uint256 id, address addr) view external returns (string memory);
-    function setItemExtra(uint256 id, address addr, string calldata extra) external;
+    function itemExtras(uint256 id, address item) view external returns (string memory);
+    function setItemExtra(uint256 id, address item, string calldata extra) external;
 }
