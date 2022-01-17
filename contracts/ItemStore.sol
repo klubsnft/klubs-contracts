@@ -647,4 +647,44 @@ contract ItemStore is Ownable, IItemStore {
             isFulfilled
         );
     }
+
+    //Auction
+    struct Auction {
+        address seller;
+        uint256 metaverseId;
+        address item;
+        uint256 id;
+        uint256 amount;
+        uint256 startPrice;
+        uint256 endBlock;
+    }
+
+    struct AuctionInfo {
+        bytes32 hash;
+        uint256 auctionId;
+    }
+
+    mapping(bytes32 => Auction[]) public auctions; //auctions[hash]. hash: item,id
+
+    mapping(address => AuctionInfo[]) public onAuctions; //onAuctions[item]. 아이템 계약 중 onAuction 중인 정보들.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _onAuctionsIndex; //_onAuctionsIndex[auctionHash][auctionId]. 특정 세일의 onAuctions index.
+
+    mapping(address => AuctionInfo[]) public userAuctionInfo; //userAuctionInfo[seller] 셀러가 팔고있는 세일의 정보.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _userAuctionIndex; //_userAuctionIndex[auctionHash][auctionId]. 특정 세일의 userAuctionInfo index.
+
+    mapping(uint256 => AuctionInfo[]) public auctionsOnMetaverse; //auctionsOnMetaverse[metaverseId]. 특정 메타버스에서 판매되고있는 모든 세일들.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _auctionsOnMvIndex; //_auctionsOnMvIndex[auctionHash][auctionId]. 특정 세일의 auctionsOnMetaverse index.
+
+    function onAuctionsCount(address item) external view returns (uint256) {
+        return onAuctions[item].length;
+    }
+
+    function userAuctionInfoLength(address seller) external view returns (uint256) {
+        return userAuctionInfo[seller].length;
+    }
+
+    function auctionsOnMetaverseLength(uint256 metaverseId) external view returns (uint256) {
+        return auctionsOnMetaverse[metaverseId].length;
+    }
+
 }
