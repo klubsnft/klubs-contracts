@@ -560,10 +560,12 @@ contract ItemStore is Ownable, IItemStore {
     function acceptOffer(
         bytes32 hash,
         uint256 offerId,
-        uint256 amount
+        uint256 amount,
+        uint256 unitPrice
     ) external userWhitelist(msg.sender) {
         Offer memory _offer = offers[hash][offerId];
         require(_offer.offeror != address(0) && _offer.offeror != msg.sender);
+        require(_offer.unitPrice == unitPrice);
 
         if (!_offer.partialBuying) {
             require(_offer.amount == amount);
