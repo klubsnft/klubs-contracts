@@ -183,6 +183,41 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
+    function _removeOffer(bytes32 hash, uint256 offerId) private {
+        Offer memory _offer = offers[hash][offerId];
+
+        //delete userOfferInfo
+        uint256 lastIndex = userOfferInfo[_offer.offeror].length.sub(1);
+        uint256 index = _userOfferIndex[hash][offerId];
+        if (index != lastIndex) {
+            OfferInfo memory lastOfferInfo = userOfferInfo[_offer.offeror][lastIndex];
+            userOfferInfo[_offer.offeror][index] = lastOfferInfo;
+            _userOfferIndex[lastOfferInfo.hash][lastOfferInfo.offerId] = index;
+        }
+        userOfferInfo[_offer.offeror].length--;
+        delete _userOfferIndex[hash][offerId];
+
+        //delete sales
+        lastIndex = offers[hash].length.sub(1);
+        Offer memory lastOffer = offers[hash][lastIndex];
+        if (offerId != lastIndex) {
+            offers[hash][offerId] = lastOffer;
+            emit ChangeOfferId(
+                lastOffer.metaverseId,
+                lastOffer.item,
+                lastOffer.id,
+                lastOffer.offeror,
+                lastOffer.amount,
+                lastOffer.unitPrice,
+                lastOffer.partialBuying,
+                hash,
+                lastIndex,
+                offerId
+            );
+        }
+        offers[hash].length--;
+    }
+
     function _removeAuction(bytes32 hash, uint256 auctionId) private {
         // if (checkAuction(metaverseId, addr, id) == true) {
         //     uint256 lastIndex = onAuctionsCount(metaverseId, addr).sub(1);
@@ -552,41 +587,6 @@ contract ItemStore is Ownable, IItemStore {
         emit CancelOffer(_offer.metaverseId, _offer.item, _offer.id, msg.sender, _offer.amount, hash, offerId);
     }
 
-    function _removeOffer(bytes32 hash, uint256 offerId) private {
-        Offer memory _offer = offers[hash][offerId];
-
-        //delete userOfferInfo
-        uint256 lastIndex = userOfferInfo[_offer.offeror].length.sub(1);
-        uint256 index = _userOfferIndex[hash][offerId];
-        if (index != lastIndex) {
-            OfferInfo memory lastOfferInfo = userOfferInfo[_offer.offeror][lastIndex];
-            userOfferInfo[_offer.offeror][index] = lastOfferInfo;
-            _userOfferIndex[lastOfferInfo.hash][lastOfferInfo.offerId] = index;
-        }
-        userOfferInfo[_offer.offeror].length--;
-        delete _userOfferIndex[hash][offerId];
-
-        //delete sales
-        lastIndex = offers[hash].length.sub(1);
-        Offer memory lastOffer = offers[hash][lastIndex];
-        if (offerId != lastIndex) {
-            offers[hash][offerId] = lastOffer;
-            emit ChangeOfferId(
-                lastOffer.metaverseId,
-                lastOffer.item,
-                lastOffer.id,
-                lastOffer.offeror,
-                lastOffer.amount,
-                lastOffer.unitPrice,
-                lastOffer.partialBuying,
-                hash,
-                lastIndex,
-                offerId
-            );
-        }
-        offers[hash].length--;
-    }
-
     function acceptOffer(
         bytes32 hash,
         uint256 offerId,
@@ -617,6 +617,17 @@ contract ItemStore is Ownable, IItemStore {
             isFulfilled = true;
         }
 
-        emit AcceptOffer(_offer.metaverseId, _offer.item, _offer.id, _offer.offeror, msg.sender, _offer.amount, _offer.unitPrice, hash, offerId, isFulfilled);
+        emit AcceptOffer(
+            _offer.metaverseId,
+            _offer.item,
+            _offer.id,
+            _offer.offeror,
+            msg.sender,
+            _offer.amount,
+            _offer.unitPrice,
+            hash,
+            offerId,
+            isFulfilled
+        );
     }
 }
