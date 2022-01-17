@@ -123,43 +123,10 @@ contract ItemStore is Ownable, IItemStore {
         Sale memory sale = sales[hash][saleId];
         // require(sale.seller != address(0));
 
-        //delete onSales
-        uint256 lastIndex = onSales[sale.item].length.sub(1);
-        uint256 index = _onSalesIndex[hash][saleId];
-        if (index != lastIndex) {
-            SaleInfo memory lastSaleInfo = onSales[sale.item][lastIndex];
-            onSales[sale.item][index] = lastSaleInfo;
-            _onSalesIndex[lastSaleInfo.hash][lastSaleInfo.saleId] = index;
-        }
-        onSales[sale.item].length--;
-        delete _onSalesIndex[hash][saleId];
-
-        //delete userSellInfo
-        lastIndex = userSellInfo[sale.seller].length.sub(1);
-        index = _userSellIndex[hash][saleId];
-        if (index != lastIndex) {
-            SaleInfo memory lastSaleInfo = userSellInfo[sale.seller][lastIndex];
-            userSellInfo[sale.seller][index] = lastSaleInfo;
-            _userSellIndex[lastSaleInfo.hash][lastSaleInfo.saleId] = index;
-        }
-        userSellInfo[sale.seller].length--;
-        delete _userSellIndex[hash][saleId];
-
-        //delete salesOnMetaverse
-        lastIndex = salesOnMetaverse[sale.metaverseId].length.sub(1);
-        index = _salesOnMvIndex[hash][saleId];
-        if (index != lastIndex) {
-            SaleInfo memory lastSaleInfo = salesOnMetaverse[sale.metaverseId][lastIndex];
-            salesOnMetaverse[sale.metaverseId][index] = lastSaleInfo;
-            _salesOnMvIndex[lastSaleInfo.hash][lastSaleInfo.saleId] = index;
-        }
-        salesOnMetaverse[sale.metaverseId].length--;
-        delete _salesOnMvIndex[hash][saleId];
-
         //delete sales
-        lastIndex = sales[hash].length.sub(1);
-        if (saleId != lastIndex) {
-            Sale memory lastSale = sales[hash][lastIndex];
+        uint256 lastSaleId = sales[hash].length.sub(1);
+        Sale memory lastSale = sales[hash][lastSaleId];
+        if (saleId != lastSaleId) {
             sales[hash][saleId] = lastSale;
             emit ChangeSaleId(
                 lastSale.metaverseId,
@@ -170,11 +137,52 @@ contract ItemStore is Ownable, IItemStore {
                 lastSale.unitPrice,
                 lastSale.partialBuying,
                 hash,
-                lastIndex,
+                lastSaleId,
                 saleId
             );
         }
         sales[hash].length--;
+
+        //delete onSales
+        uint256 lastIndex = onSales[lastSale.item].length.sub(1);
+        uint256 index = _onSalesIndex[hash][lastSaleId];
+        if (index != lastIndex) {
+            SaleInfo memory lastSaleInfo = onSales[lastSale.item][lastIndex];
+            onSales[lastSale.item][index] = lastSaleInfo;
+            _onSalesIndex[lastSaleInfo.hash][lastSaleInfo.saleId] = index;
+        }
+        onSales[lastSale.item].length--;
+        delete _onSalesIndex[hash][lastSaleId];
+
+        //delete userSellInfo
+        lastIndex = userSellInfo[sale.seller].length.sub(1);
+        index = _userSellIndex[hash][saleId];
+        if (index != lastIndex) {
+            SaleInfo memory lastSaleInfo = userSellInfo[sale.seller][lastIndex];
+            userSellInfo[sale.seller][index] = lastSaleInfo;
+            _userSellIndex[lastSaleInfo.hash][lastSaleInfo.saleId] = index;
+        }
+        userSellInfo[sale.seller].length--;
+
+        uint256 _lastSaleUserIndex = _userSellIndex[hash][lastSaleId];
+        userSellInfo[lastSale.seller][_lastSaleUserIndex].saleId = saleId;
+        _userSellIndex[hash][saleId] = _lastSaleUserIndex;
+        delete _userSellIndex[hash][lastSaleId];
+
+        //delete salesOnMetaverse
+        lastIndex = salesOnMetaverse[sale.metaverseId].length.sub(1);
+        index = _salesOnMvIndex[hash][saleId];
+        if (index != lastIndex) {
+            SaleInfo memory lastSaleInfo = salesOnMetaverse[sale.metaverseId][lastIndex];
+            salesOnMetaverse[sale.metaverseId][index] = lastSaleInfo;
+            _salesOnMvIndex[lastSaleInfo.hash][lastSaleInfo.saleId] = index;
+        }
+        salesOnMetaverse[sale.metaverseId].length--;
+
+        uint256 _lastSaleMvIndex = _salesOnMvIndex[hash][lastSaleId];
+        salesOnMetaverse[lastSale.metaverseId][_lastSaleMvIndex].saleId = saleId;
+        _salesOnMvIndex[hash][saleId] = _lastSaleMvIndex;
+        delete _salesOnMvIndex[hash][lastSaleId];
 
         //subtract amounts
         if (sale.amount > 0) {
@@ -186,21 +194,10 @@ contract ItemStore is Ownable, IItemStore {
     function _removeOffer(bytes32 hash, uint256 offerId) private {
         Offer memory _offer = offers[hash][offerId];
 
-        //delete userOfferInfo
-        uint256 lastIndex = userOfferInfo[_offer.offeror].length.sub(1);
-        uint256 index = _userOfferIndex[hash][offerId];
-        if (index != lastIndex) {
-            OfferInfo memory lastOfferInfo = userOfferInfo[_offer.offeror][lastIndex];
-            userOfferInfo[_offer.offeror][index] = lastOfferInfo;
-            _userOfferIndex[lastOfferInfo.hash][lastOfferInfo.offerId] = index;
-        }
-        userOfferInfo[_offer.offeror].length--;
-        delete _userOfferIndex[hash][offerId];
-
         //delete sales
-        lastIndex = offers[hash].length.sub(1);
-        if (offerId != lastIndex) {
-            Offer memory lastOffer = offers[hash][lastIndex];
+        uint256 lastOfferId = offers[hash].length.sub(1);
+        Offer memory lastOffer = offers[hash][lastOfferId];
+        if (offerId != lastOfferId) {
             offers[hash][offerId] = lastOffer;
             emit ChangeOfferId(
                 lastOffer.metaverseId,
@@ -211,11 +208,26 @@ contract ItemStore is Ownable, IItemStore {
                 lastOffer.unitPrice,
                 lastOffer.partialBuying,
                 hash,
-                lastIndex,
+                lastOfferId,
                 offerId
             );
         }
         offers[hash].length--;
+
+        //delete userOfferInfo
+        uint256 lastIndex = userOfferInfo[_offer.offeror].length.sub(1);
+        uint256 index = _userOfferIndex[hash][offerId];
+        if (index != lastIndex) {
+            OfferInfo memory lastOfferInfo = userOfferInfo[_offer.offeror][lastIndex];
+            userOfferInfo[_offer.offeror][index] = lastOfferInfo;
+            _userOfferIndex[lastOfferInfo.hash][lastOfferInfo.offerId] = index;
+        }
+        userOfferInfo[_offer.offeror].length--;
+
+        uint256 _lastOfferUserIndex = _userOfferIndex[hash][lastOfferId];
+        userOfferInfo[lastOffer.offeror][_lastOfferUserIndex].offerId = offerId;
+        _userOfferIndex[hash][offerId] = _lastOfferUserIndex;
+        delete _userOfferIndex[hash][lastOfferId];
     }
 
     function _removeAuction(bytes32 hash, uint256 auctionId) private {
