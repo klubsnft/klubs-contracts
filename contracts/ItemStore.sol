@@ -346,7 +346,7 @@ contract ItemStore is Ownable, IItemStore {
         return userSellInfo[seller].length;
     }
 
-    function userSalesOnMetaverseLength(uint256 metaverseId) external view returns (uint256) {
+    function salesOnMetaverseLength(uint256 metaverseId) external view returns (uint256) {
         return salesOnMetaverse[metaverseId].length;
     }
 
