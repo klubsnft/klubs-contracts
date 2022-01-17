@@ -127,9 +127,9 @@ contract ItemStore is Ownable, IItemStore {
         uint256 lastIndex = onSales[sale.item].length.sub(1);
         uint256 index = _onSalesIndex[hash][saleId];
         if (index != lastIndex) {
-            SaleInfo memory lastSale = onSales[sale.item][lastIndex];
-            onSales[sale.item][index] = lastSale;
-            _onSalesIndex[lastSale.hash][lastSale.saleId] = index;
+            SaleInfo memory lastSaleInfo = onSales[sale.item][lastIndex];
+            onSales[sale.item][index] = lastSaleInfo;
+            _onSalesIndex[lastSaleInfo.hash][lastSaleInfo.saleId] = index;
         }
         onSales[sale.item].length--;
         delete _onSalesIndex[hash][saleId];
@@ -138,9 +138,9 @@ contract ItemStore is Ownable, IItemStore {
         lastIndex = userSellInfo[sale.seller].length.sub(1);
         index = _userSellIndex[hash][saleId];
         if (index != lastIndex) {
-            SaleInfo memory lastSale = userSellInfo[sale.seller][lastIndex];
-            userSellInfo[sale.seller][index] = lastSale;
-            _userSellIndex[lastSale.hash][lastSale.saleId] = index;
+            SaleInfo memory lastSaleInfo = userSellInfo[sale.seller][lastIndex];
+            userSellInfo[sale.seller][index] = lastSaleInfo;
+            _userSellIndex[lastSaleInfo.hash][lastSaleInfo.saleId] = index;
         }
         userSellInfo[sale.seller].length--;
         delete _userSellIndex[hash][saleId];
@@ -149,9 +149,9 @@ contract ItemStore is Ownable, IItemStore {
         lastIndex = salesOnMetaverse[sale.metaverseId].length.sub(1);
         index = _salesOnMvIndex[hash][saleId];
         if (index != lastIndex) {
-            SaleInfo memory lastSale = salesOnMetaverse[sale.metaverseId][lastIndex];
-            salesOnMetaverse[sale.metaverseId][index] = lastSale;
-            _salesOnMvIndex[lastSale.hash][lastSale.saleId] = index;
+            SaleInfo memory lastSaleInfo = salesOnMetaverse[sale.metaverseId][lastIndex];
+            salesOnMetaverse[sale.metaverseId][index] = lastSaleInfo;
+            _salesOnMvIndex[lastSaleInfo.hash][lastSaleInfo.saleId] = index;
         }
         salesOnMetaverse[sale.metaverseId].length--;
         delete _salesOnMvIndex[hash][saleId];
@@ -544,9 +544,9 @@ contract ItemStore is Ownable, IItemStore {
         uint256 lastIndex = userOfferInfo[_offer.offeror].length.sub(1);
         uint256 index = _userOfferIndex[hash][offerId];
         if (index != lastIndex) {
-            OfferInfo memory lastOffer = userOfferInfo[_offer.offeror][lastIndex];
-            userOfferInfo[_offer.offeror][index] = lastOffer;
-            _userOfferIndex[lastOffer.hash][lastOffer.offerId] = index;
+            OfferInfo memory lastOfferInfo = userOfferInfo[_offer.offeror][lastIndex];
+            userOfferInfo[_offer.offeror][index] = lastOfferInfo;
+            _userOfferIndex[lastOfferInfo.hash][lastOfferInfo.offerId] = index;
         }
         userOfferInfo[_offer.offeror].length--;
         delete _userOfferIndex[hash][offerId];
