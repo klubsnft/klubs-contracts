@@ -444,6 +444,7 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     function buy(
+        address[] calldata items,
         bytes32[] calldata hashes,
         uint256[] calldata saleIds,
         uint256[] calldata amounts,
@@ -451,13 +452,15 @@ contract ItemStore is Ownable, IItemStore {
         uint256[] calldata mileages
     ) external userWhitelist(msg.sender) {
         require(
-            hashes.length == saleIds.length &&
-                hashes.length == amounts.length &&
-                hashes.length == unitPrices.length &&
-                hashes.length == mileages.length
+            items.length == hashes.length &&
+                items.length == saleIds.length &&
+                items.length == amounts.length &&
+                items.length == unitPrices.length &&
+                items.length == mileages.length
         );
-        for (uint256 i = 0; i < hashes.length; i++) {
+        for (uint256 i = 0; i < items.length; i++) {
             Sale memory sale = sales[hashes[i]][saleIds[i]];
+            require(sale.item == items[i]);
             require(sale.seller != address(0) && sale.seller != msg.sender);
             require(sale.unitPrice == unitPrices[i]);
 
@@ -588,12 +591,14 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     function acceptOffer(
+        address item,
         bytes32 hash,
         uint256 offerId,
         uint256 amount,
         uint256 unitPrice
     ) external userWhitelist(msg.sender) {
         Offer memory _offer = offers[hash][offerId];
+        require(_offer.item == item);
         require(_offer.offeror != address(0) && _offer.offeror != msg.sender);
         require(_offer.unitPrice == unitPrice);
 
