@@ -47,6 +47,7 @@ contract Metaverses is Ownable, IMetaverses {
 
     function addManager(uint256 id, address manager) onlyManager(id) external {
         require(!existsManager(id, manager));
+        require(id < metaverseCount);
         _addManager(id, manager);
     }
 
@@ -92,6 +93,7 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => RoyaltyInfo) public royalties;
 
     function setRoyalty(uint256 id, address receiver, uint256 royalty) onlyManager(id) external {
+        require(id < metaverseCount);
         require(royalty <= 1e3); // max royalty is 10%
         royalties[id] = RoyaltyInfo({
             receiver: receiver,
@@ -103,6 +105,7 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => string) public extras;
 
     function setExtra(uint256 id, string calldata extra) onlyManager(id) external {
+        require(id < metaverseCount);
         require(bytes(extra).length > 0);
         extras[id] = extra;
         emit SetExtra(id, extra);
@@ -111,11 +114,13 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => bool) public onlyKlubsMembership;
 
     function joinOnlyKlubsMembership(uint256 id) onlyOwner external {
+        require(id < metaverseCount);
         onlyKlubsMembership[id] = true;
         emit JoinOnlyKlubsMembership(id);
     }
 
     function exitOnlyKlubsMembership(uint256 id) onlyOwner external {
+        require(id < metaverseCount);
         onlyKlubsMembership[id] = false;
         emit ExitOnlyKlubsMembership(id);
     }
@@ -123,11 +128,13 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => bool) public mileageMode;
 
     function mileageOn(uint256 id) onlyManager(id) external {
+        require(id < metaverseCount);
         mileageMode[id] = true;
         emit MileageOn(id);
     }
 
     function mileageOff(uint256 id) onlyManager(id) external {
+        require(id < metaverseCount);
         mileageMode[id] = false;
         emit MileageOff(id);
     }
@@ -135,11 +142,13 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => bool) public banned;
 
     function ban(uint256 id) onlyOwner external {
+        require(id < metaverseCount);
         banned[id] = true;
         emit Ban(id);
     }
 
     function unban(uint256 id) onlyOwner external {
+        require(id < metaverseCount);
         banned[id] = false;
         emit Unban(id);
     }
@@ -154,6 +163,7 @@ contract Metaverses is Ownable, IMetaverses {
     ItemProposal[] public itemProposals;
 
     function proposeItem(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
+        require(id < metaverseCount);
         itemProposals.push(ItemProposal({
             id: id,
             addr: addr,
@@ -188,6 +198,7 @@ contract Metaverses is Ownable, IMetaverses {
     }
 
     function addItem(uint256 id, address addr, ItemType itemType, string calldata extra) onlyManager(id) external {
+        require(id < metaverseCount);
         require(_itemManagingRoleCheck(addr));
         _addItem(id, addr, itemType);
 
@@ -198,6 +209,7 @@ contract Metaverses is Ownable, IMetaverses {
     }
 
     function updateItemType(uint256 id, address addr, ItemType itemType) onlyManager(id) external {
+        require(id < metaverseCount);
         require(_itemManagingRoleCheck(addr));
         require(itemTypes[id][addr] != itemType);
         
@@ -241,11 +253,13 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => mapping(address => uint256)) public itemTotalSupplies;
 
     function setItemEnumerable(uint256 id, address addr, bool enumerable) onlyManager(id) public {
+        require(id < metaverseCount);
         itemEnumerables[id][addr] = enumerable;
         emit SetItemEnumerable(id, addr, enumerable);
     }
 
     function setItemTotalSupply(uint256 id, address addr, uint256 totalSupply) onlyManager(id) external {
+        require(id < metaverseCount);
         if (itemEnumerables[id][addr]) {
             setItemEnumerable(id, addr, false);
         }
@@ -264,6 +278,7 @@ contract Metaverses is Ownable, IMetaverses {
     mapping(uint256 => mapping(address => string)) public itemExtras;
 
     function setItemExtra(uint256 id, address addr, string calldata extra) onlyManager(id) external {
+        require(id < metaverseCount);
         itemExtras[id][addr] = extra;
         emit SetItemExtra(id, addr, extra);
     }
