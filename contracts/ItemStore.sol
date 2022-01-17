@@ -158,8 +158,8 @@ contract ItemStore is Ownable, IItemStore {
 
         //delete sales
         lastIndex = sales[hash].length.sub(1);
-        Sale memory lastSale = sales[hash][lastIndex];
         if (saleId != lastIndex) {
+            Sale memory lastSale = sales[hash][lastIndex];
             sales[hash][saleId] = lastSale;
             emit ChangeSaleId(
                 lastSale.metaverseId,
@@ -199,8 +199,8 @@ contract ItemStore is Ownable, IItemStore {
 
         //delete sales
         lastIndex = offers[hash].length.sub(1);
-        Offer memory lastOffer = offers[hash][lastIndex];
         if (offerId != lastIndex) {
+            Offer memory lastOffer = offers[hash][lastIndex];
             offers[hash][offerId] = lastOffer;
             emit ChangeOfferId(
                 lastOffer.metaverseId,
