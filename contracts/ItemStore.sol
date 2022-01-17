@@ -158,7 +158,22 @@ contract ItemStore is Ownable, IItemStore {
 
         //delete sales
         lastIndex = sales[hash].length.sub(1);
-        if (saleId != lastIndex) sales[hash][saleId] = sales[hash][lastIndex];
+        Sale memory lastSale = sales[hash][lastIndex];
+        if (saleId != lastIndex) {
+            sales[hash][saleId] = lastSale;
+            emit ChangeSaleId(
+                lastSale.metaverseId,
+                lastSale.item,
+                lastSale.id,
+                lastSale.seller,
+                lastSale.amount,
+                lastSale.unitPrice,
+                lastSale.partialBuying,
+                hash,
+                lastIndex,
+                saleId
+            );
+        }
         sales[hash].length--;
 
         //subtract amounts
@@ -553,7 +568,22 @@ contract ItemStore is Ownable, IItemStore {
 
         //delete sales
         lastIndex = offers[hash].length.sub(1);
-        if (offerId != lastIndex) offers[hash][offerId] = offers[hash][lastIndex];
+        Offer memory lastOffer = offers[hash][lastIndex];
+        if (offerId != lastIndex) {
+            offers[hash][offerId] = lastOffer;
+            emit ChangeOfferId(
+                lastOffer.metaverseId,
+                lastOffer.item,
+                lastOffer.id,
+                lastOffer.offeror,
+                lastOffer.amount,
+                lastOffer.unitPrice,
+                lastOffer.partialBuying,
+                hash,
+                lastIndex,
+                offerId
+            );
+        }
         offers[hash].length--;
     }
 
