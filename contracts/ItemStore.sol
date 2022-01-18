@@ -570,6 +570,27 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
+    function _checkOfferHash(
+        bytes32 hash,
+        uint256 offerId,
+        bytes32 checkingHash
+    ) internal view returns (bool) {
+        Offer memory offer = offers[hash][offerId];
+        bytes32 computedHash = keccak256(
+            abi.encodePacked(
+                offer.offeror,
+                offer.metaverseId,
+                offer.item,
+                offer.id,
+                offer.amount,
+                offer.unitPrice,
+                offer.partialBuying,
+                offer.mileage
+            )
+        );
+        return (computedHash == checkingHash);
+    }
+
     function makeOffer(
         uint256 metaverseId,
         address item,
@@ -607,9 +628,14 @@ contract ItemStore is Ownable, IItemStore {
         emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, hash, offerId);
     }
 
-    function cancelOffer(bytes32 hash, uint256 offerId) external {
+    function cancelOffer(
+        bytes32 hash,
+        uint256 offerId,
+        bytes32 checkingHash
+    ) external {
         Offer memory _offer = offers[hash][offerId];
         require(_offer.offeror == msg.sender);
+        require(_checkOfferHash(hash, offerId, checkingHash));
 
         _removeOffer(hash, offerId);
 
