@@ -39,6 +39,7 @@ interface IItemStore {
         uint256 id,
         address seller,
         uint256 amount,
+        uint256 unitPrice,
         bytes32 indexed hash,
         uint256 saleId
     );
@@ -72,6 +73,7 @@ interface IItemStore {
         uint256 id,
         address offeror,
         uint256 amount,
+        uint256 unitPrice,
         bytes32 indexed hash,
         uint256 offerId
     );

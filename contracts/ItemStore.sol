@@ -471,7 +471,16 @@ contract ItemStore is Ownable, IItemStore {
             require(_checkSaleHash(hashes[i], saleIds[i], checkingHashes[i]));
 
             _removeSale(hashes[i], saleIds[i]);
-            emit CancelSale(sale.metaverseId, sale.item, sale.id, msg.sender, sale.amount, hashes[i], saleIds[i]);
+            emit CancelSale(
+                sale.metaverseId,
+                sale.item,
+                sale.id,
+                msg.sender,
+                sale.amount,
+                sale.unitPrice,
+                hashes[i],
+                saleIds[i]
+            );
         }
     }
 
@@ -645,7 +654,16 @@ contract ItemStore is Ownable, IItemStore {
             mileage.charge(msg.sender, _offer.mileage);
         }
 
-        emit CancelOffer(_offer.metaverseId, _offer.item, _offer.id, msg.sender, _offer.amount, hash, offerId);
+        emit CancelOffer(
+            _offer.metaverseId,
+            _offer.item,
+            _offer.id,
+            msg.sender,
+            _offer.amount,
+            _offer.unitPrice,
+            hash,
+            offerId
+        );
     }
 
     function acceptOffer(
