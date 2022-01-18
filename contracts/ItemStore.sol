@@ -53,7 +53,7 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     function isItemWhitelisted(uint256 metaverseId, address item) private view returns (bool) {
-        if(!isMetaverseWhitelisted(metaverseId)) return false;
+        if (!isMetaverseWhitelisted(metaverseId)) return false;
         return (metaverses.itemAdded(metaverseId, item));
     }
 
@@ -408,20 +408,20 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id,
         uint256 amount
     ) public view returns (bool) {
-        if(!isItemWhitelisted(metaverseId, item)) return false;
-        
+        if (!isItemWhitelisted(metaverseId, item)) return false;
+
         if (_isERC1155(metaverseId, item)) {
-            if(amount == 0) return false;
+            if (amount == 0) return false;
             IKIP37 nft = IKIP37(item);
             bytes32 hash = keccak256(abi.encodePacked(item, id, seller));
-            if(userOnSaleAmounts[hash].add(amount) > nft.balanceOf(seller, id)) return false;
+            if (userOnSaleAmounts[hash].add(amount) > nft.balanceOf(seller, id)) return false;
             return true;
         } else {
-            if(amount != 1) return false;
+            if (amount != 1) return false;
             IKIP17 nft = IKIP17(item);
-            if(nft.ownerOf(id) != seller) return false;
+            if (nft.ownerOf(id) != seller) return false;
             bytes32 hash = keccak256(abi.encodePacked(item, id, seller));
-            if(userOnSaleAmounts[hash] != 0) return false;
+            if (userOnSaleAmounts[hash] != 0) return false;
             return true;
         }
     }
@@ -655,13 +655,13 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id,
         uint256 amount
     ) public view returns (bool) {
-        if(!isItemWhitelisted(metaverseId, item)) return false;
+        if (!isItemWhitelisted(metaverseId, item)) return false;
         if (_isERC1155(metaverseId, item)) {
-            if(amount == 0) return false;
+            if (amount == 0) return false;
             return true;
         } else {
-            if(amount != 1) return false;
-            if(IKIP17(item).ownerOf(id) == offeror) return false;
+            if (amount != 1) return false;
+            if (IKIP17(item).ownerOf(id) == offeror) return false;
             return true;
         }
     }
@@ -714,7 +714,18 @@ contract ItemStore is Ownable, IItemStore {
         mix.transferFrom(msg.sender, address(this), amount.mul(unitPrice).sub(_mileage));
         if (_mileage > 0) mileage.use(msg.sender, _mileage);
 
-        emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, hash, offerId, verificationID);
+        emit MakeOffer(
+            metaverseId,
+            item,
+            id,
+            msg.sender,
+            amount,
+            unitPrice,
+            partialBuying,
+            hash,
+            offerId,
+            verificationID
+        );
     }
 
     function cancelOffer(
@@ -840,15 +851,15 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id,
         uint256 amount
     ) public view returns (bool) {
-        if(!isItemWhitelisted(metaverseId, item)) return false;
+        if (!isItemWhitelisted(metaverseId, item)) return false;
 
         if (_isERC1155(metaverseId, item)) {
-            if(amount == 0) return false;
-            if(IKIP37(item).balanceOf(seller, id) < amount) return false;
+            if (amount == 0) return false;
+            if (IKIP37(item).balanceOf(seller, id) < amount) return false;
             return true;
         } else {
-            if(amount != 1) return false;
-            if(IKIP17(item).ownerOf(id) != seller) return false;
+            if (amount != 1) return false;
+            if (IKIP17(item).ownerOf(id) != seller) return false;
             return true;
         }
     }
@@ -866,16 +877,7 @@ contract ItemStore is Ownable, IItemStore {
         require(canCreateAuction(msg.sender, metaverseId, item, id, amount));
 
         bytes32 verificationID = keccak256(
-            abi.encodePacked(
-                msg.sender,
-                metaverseId,
-                item,
-                id,
-                amount,
-                startTotalPrice,
-                endBlock,
-                nonce[msg.sender]++
-            )
+            abi.encodePacked(msg.sender, metaverseId, item, id, amount, startTotalPrice, endBlock, nonce[msg.sender]++)
         );
 
         bytes32 hash = keccak256(abi.encodePacked(item, id));
@@ -906,7 +908,18 @@ contract ItemStore is Ownable, IItemStore {
 
         _itemTransfer(metaverseId, item, id, amount, msg.sender, address(this));
 
-        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startTotalPrice, endBlock, hash, auctionId, verificationID);
+        emit CreateAuction(
+            metaverseId,
+            item,
+            id,
+            msg.sender,
+            amount,
+            startTotalPrice,
+            endBlock,
+            hash,
+            auctionId,
+            verificationID
+        );
     }
 
     function cancelAuction(
