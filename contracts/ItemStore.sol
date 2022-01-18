@@ -373,6 +373,18 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
+    function _checkSaleHash(
+        bytes32 hash,
+        uint256 saleId,
+        bytes32 checkingHash
+    ) internal view returns (bool) {
+        Sale memory sale = sales[hash][saleId];
+        bytes32 computedHash = keccak256(
+            abi.encodePacked(sale.seller, sale.metaverseId, sale.item, sale.id, sale.amount, sale.unitPrice, sale.partialBuying)
+        );
+        return (computedHash == checkingHash);
+    }
+
     function sell(
         uint256[] calldata metaverseIds,
         address[] calldata items,
@@ -432,23 +444,31 @@ contract ItemStore is Ownable, IItemStore {
     function changeSellPrice(
         bytes32[] calldata hashes,
         uint256[] calldata saleIds,
-        uint256[] calldata unitPrices
+        uint256[] calldata unitPrices,
+        bytes32[] calldata checkingHashes
     ) external userWhitelist(msg.sender) {
         require(hashes.length == saleIds.length && hashes.length == unitPrices.length);
         for (uint256 i = 0; i < hashes.length; i++) {
             Sale storage sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller == msg.sender);
             require(sale.unitPrice != unitPrices[i]);
+            require(_checkSaleHash(hashes[i], saleIds[i], checkingHashes[i]));
+
             sale.unitPrice = unitPrices[i];
             emit ChangeSellPrice(sale.metaverseId, sale.item, sale.id, msg.sender, unitPrices[i], hashes[i], saleIds[i]);
         }
     }
 
-    function cancelSale(bytes32[] calldata hashes, uint256[] calldata saleIds) external {
-        require(hashes.length == saleIds.length);
+    function cancelSale(
+        bytes32[] calldata hashes,
+        uint256[] calldata saleIds,
+        bytes32[] calldata checkingHashes
+    ) external {
+        require(hashes.length == saleIds.length && hashes.length == checkingHashes.length);
         for (uint256 i = 0; i < hashes.length; i++) {
             Sale memory sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller == msg.sender);
+            require(_checkSaleHash(hashes[i], saleIds[i], checkingHashes[i]));
 
             _removeSale(hashes[i], saleIds[i]);
             emit CancelSale(sale.metaverseId, sale.item, sale.id, msg.sender, sale.amount, hashes[i], saleIds[i]);
