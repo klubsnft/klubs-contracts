@@ -380,7 +380,15 @@ contract ItemStore is Ownable, IItemStore {
     ) internal view returns (bool) {
         Sale memory sale = sales[hash][saleId];
         bytes32 computedHash = keccak256(
-            abi.encodePacked(sale.seller, sale.metaverseId, sale.item, sale.id, sale.amount, sale.unitPrice, sale.partialBuying)
+            abi.encodePacked(
+                sale.seller,
+                sale.metaverseId,
+                sale.item,
+                sale.id,
+                sale.amount,
+                sale.unitPrice,
+                sale.partialBuying
+            )
         );
         return (computedHash == checkingHash);
     }
@@ -436,7 +444,17 @@ contract ItemStore is Ownable, IItemStore {
             bytes32 iisHash = keccak256(abi.encodePacked(items[i], ids[i], msg.sender));
             userOnSaleAmounts[iisHash] = userOnSaleAmounts[iisHash].add(amounts[i]);
 
-            emit Sell(metaverseId, items[i], ids[i], msg.sender, amounts[i], unitPrices[i], partialBuyings[i], hash, saleId);
+            emit Sell(
+                metaverseId,
+                items[i],
+                ids[i],
+                msg.sender,
+                amounts[i],
+                unitPrices[i],
+                partialBuyings[i],
+                hash,
+                saleId
+            );
         }
     }
 
@@ -454,7 +472,15 @@ contract ItemStore is Ownable, IItemStore {
             require(_checkSaleHash(hashes[i], saleIds[i], checkingHashes[i]));
 
             sale.unitPrice = unitPrices[i];
-            emit ChangeSellPrice(sale.metaverseId, sale.item, sale.id, msg.sender, unitPrices[i], hashes[i], saleIds[i]);
+            emit ChangeSellPrice(
+                sale.metaverseId,
+                sale.item,
+                sale.id,
+                msg.sender,
+                unitPrices[i],
+                hashes[i],
+                saleIds[i]
+            );
         }
     }
 
@@ -529,7 +555,18 @@ contract ItemStore is Ownable, IItemStore {
                 isFulfilled = true;
             }
 
-            emit Buy(sale.metaverseId, sale.item, sale.id, sale.seller, msg.sender, amounts[i], unitPrices[i], hashes[i], saleIds[i], isFulfilled);
+            emit Buy(
+                sale.metaverseId,
+                sale.item,
+                sale.id,
+                sale.seller,
+                msg.sender,
+                amounts[i],
+                unitPrices[i],
+                hashes[i],
+                saleIds[i],
+                isFulfilled
+            );
         }
     }
 
@@ -608,7 +645,7 @@ contract ItemStore is Ownable, IItemStore {
         bool partialBuying,
         uint256 _mileage
     ) external userWhitelist(msg.sender) itemWhitelist(metaverseId, item) returns (uint256 offerId) {
-        require(unitPrice > 0 && amount > 0);
+        require(unitPrice > 0);
         require(canOffer(msg.sender, metaverseId, item, id, amount));
 
         bytes32 hash = keccak256(abi.encodePacked(item, id));
@@ -773,7 +810,15 @@ contract ItemStore is Ownable, IItemStore {
     ) internal view returns (bool) {
         Auction memory auction = auctions[hash][auctionId];
         bytes32 computedHash = keccak256(
-            abi.encodePacked(auction.seller, auction.metaverseId, auction.item, auction.id, auction.amount, auction.startPrice, auction.endBlock)
+            abi.encodePacked(
+                auction.seller,
+                auction.metaverseId,
+                auction.item,
+                auction.id,
+                auction.amount,
+                auction.startPrice,
+                auction.endBlock
+            )
         );
         return (computedHash == checkingHash);
     }
