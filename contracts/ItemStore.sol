@@ -733,4 +733,32 @@ contract ItemStore is Ownable, IItemStore {
         return auctionsOnMetaverse[metaverseId].length;
     }
 
+    function canCreateAuction(
+        address seller,
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount
+    ) public view returns (bool) {
+        if (_isERC1155(metaverseId, item)) {
+            require(amount > 0);
+            require(IKIP37(item).balanceOf(seller, id) >= amount);
+        } else {
+            require(amount == 1);
+            require(IKIP17(item).ownerOf(id) == seller);
+        }
+    }
+
+    function _checkAuctionHash(
+        bytes32 hash,
+        uint256 auctionId,
+        bytes32 checkingHash
+    ) internal view returns (bool) {
+        Auction memory auction = auctions[hash][auctionId];
+        bytes32 computedHash = keccak256(
+            abi.encodePacked(auction.seller, auction.metaverseId, auction.item, auction.id, auction.amount, auction.startPrice, auction.endBlock)
+        );
+        return (computedHash == checkingHash);
+    }
+
 }
