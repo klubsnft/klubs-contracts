@@ -244,7 +244,7 @@ contract ItemStore is Ownable, IItemStore {
                 lastAuction.id,
                 lastAuction.seller,
                 lastAuction.amount,
-                lastAuction.startPrice,
+                lastAuction.startTotalPrice,
                 lastAuction.endBlock,
                 hash,
                 lastAuctionId,
@@ -368,7 +368,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 amount;
         uint256 unitPrice;
         bool partialBuying;
-        bytes32 hashForID;
+        bytes32 verificationID;
     }
 
     struct SaleInfo {
@@ -411,18 +411,18 @@ contract ItemStore is Ownable, IItemStore {
         uint256 amount
     ) public view returns (bool) {
         if (_isERC1155(metaverseId, item)) {
-            require(amount > 0);
+            if(amount == 0) return false;
             IKIP37 nft = IKIP37(item);
-            require(nft.isApprovedForAll(seller, address(this)));
             bytes32 hash = keccak256(abi.encodePacked(item, id, seller));
-            require(userOnSaleAmounts[hash].add(amount) <= nft.balanceOf(seller, id));
+            if(userOnSaleAmounts[hash].add(amount) > nft.balanceOf(seller, id)) return false;
+            return true;
         } else {
-            require(amount == 1);
+            if(amount != 1) return false;
             IKIP17 nft = IKIP17(item);
-            require(nft.ownerOf(id) == seller);
-            require(nft.isApprovedForAll(seller, address(this)));
+            if(nft.ownerOf(id) != seller) return false;
             bytes32 hash = keccak256(abi.encodePacked(item, id, seller));
-            require(userOnSaleAmounts[hash] == 0);
+            if(userOnSaleAmounts[hash] != 0) return false;
+            return true;
         }
     }
 
@@ -449,7 +449,7 @@ contract ItemStore is Ownable, IItemStore {
             require(unitPrices[i] > 0);
             require(canSell(msg.sender, metaverseId, items[i], ids[i], amounts[i]));
 
-            bytes32 hashForID = keccak256(
+            bytes32 verificationID = keccak256(
                 abi.encodePacked(
                     msg.sender,
                     metaverseIds[i],
@@ -473,7 +473,7 @@ contract ItemStore is Ownable, IItemStore {
                     amount: amounts[i],
                     unitPrice: unitPrices[i],
                     partialBuying: partialBuyings[i],
-                    hashForID: hashForID
+                    verificationID: verificationID
                 })
             );
 
@@ -501,7 +501,7 @@ contract ItemStore is Ownable, IItemStore {
                 partialBuyings[i],
                 hash,
                 saleId,
-                hashForID
+                verificationID
             );
         }
     }
@@ -510,14 +510,14 @@ contract ItemStore is Ownable, IItemStore {
         bytes32[] calldata hashes,
         uint256[] calldata saleIds,
         uint256[] calldata unitPrices,
-        bytes32[] calldata _hashForIDes
+        bytes32[] calldata _verificationIDes
     ) external userWhitelist(msg.sender) {
         require(hashes.length == saleIds.length && hashes.length == unitPrices.length);
         for (uint256 i = 0; i < hashes.length; i++) {
             Sale storage sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller == msg.sender);
             require(sale.unitPrice != unitPrices[i]);
-            require(sale.hashForID == _hashForIDes[i]);
+            require(sale.verificationID == _verificationIDes[i]);
 
             sale.unitPrice = unitPrices[i];
             emit ChangeSellPrice(
@@ -535,13 +535,13 @@ contract ItemStore is Ownable, IItemStore {
     function cancelSale(
         bytes32[] calldata hashes,
         uint256[] calldata saleIds,
-        bytes32[] calldata _hashForIDes
+        bytes32[] calldata _verificationIDes
     ) external {
-        require(hashes.length == saleIds.length && hashes.length == _hashForIDes.length);
+        require(hashes.length == saleIds.length && hashes.length == _verificationIDes.length);
         for (uint256 i = 0; i < hashes.length; i++) {
             Sale memory sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller == msg.sender);
-            require(sale.hashForID == _hashForIDes[i]);
+            require(sale.verificationID == _verificationIDes[i]);
 
             _removeSale(hashes[i], saleIds[i]);
             emit CancelSale(
@@ -628,7 +628,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 unitPrice;
         bool partialBuying;
         uint256 mileage;
-        bytes32 hashForID;
+        bytes32 verificationID;
     }
 
     struct OfferInfo {
@@ -657,10 +657,12 @@ contract ItemStore is Ownable, IItemStore {
         uint256 amount
     ) public view returns (bool) {
         if (_isERC1155(metaverseId, item)) {
-            require(amount > 0);
+            if(amount == 0) return false;
+            return true;
         } else {
-            require(amount == 1);
-            require(IKIP17(item).ownerOf(id) != offeror);
+            if(amount != 1) return false;
+            if(IKIP17(item).ownerOf(id) == offeror) return false;
+            return true;
         }
     }
 
@@ -676,7 +678,7 @@ contract ItemStore is Ownable, IItemStore {
         require(unitPrice > 0);
         require(canOffer(msg.sender, metaverseId, item, id, amount));
 
-        bytes32 hashForID = keccak256(
+        bytes32 verificationID = keccak256(
             abi.encodePacked(
                 msg.sender,
                 metaverseId,
@@ -702,7 +704,7 @@ contract ItemStore is Ownable, IItemStore {
                 unitPrice: unitPrice,
                 partialBuying: partialBuying,
                 mileage: _mileage,
-                hashForID: hashForID
+                verificationID: verificationID
             })
         );
 
@@ -712,17 +714,17 @@ contract ItemStore is Ownable, IItemStore {
         mix.transferFrom(msg.sender, address(this), amount.mul(unitPrice).sub(_mileage));
         if (_mileage > 0) mileage.use(msg.sender, _mileage);
 
-        emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, hash, offerId, hashForID);
+        emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, hash, offerId, verificationID);
     }
 
     function cancelOffer(
         bytes32 hash,
         uint256 offerId,
-        bytes32 _hashForID
+        bytes32 _verificationID
     ) external {
         Offer memory _offer = offers[hash][offerId];
         require(_offer.offeror == msg.sender);
-        require(_offer.hashForID == _hashForID);
+        require(_offer.verificationID == _verificationID);
 
         _removeOffer(hash, offerId);
 
@@ -797,9 +799,9 @@ contract ItemStore is Ownable, IItemStore {
         address item;
         uint256 id;
         uint256 amount;
-        uint256 startPrice;
+        uint256 startTotalPrice;
         uint256 endBlock;
-        bytes32 hashForID;
+        bytes32 verificationID;
     }
 
     struct AuctionInfo {
@@ -810,13 +812,13 @@ contract ItemStore is Ownable, IItemStore {
     mapping(bytes32 => Auction[]) public auctions; //auctions[hash]. hash: item,id
 
     mapping(address => AuctionInfo[]) public onAuctions; //onAuctions[item]. 아이템 계약 중 onAuction 중인 정보들.
-    mapping(bytes32 => mapping(uint256 => uint256)) private _onAuctionsIndex; //_onAuctionsIndex[auctionHash][auctionId]. 특정 세일의 onAuctions index.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _onAuctionsIndex; //_onAuctionsIndex[auctionHash][auctionId]. 특정 옥션의 onAuctions index.
 
-    mapping(address => AuctionInfo[]) public userAuctionInfo; //userAuctionInfo[seller] 셀러가 팔고있는 세일의 정보.
-    mapping(bytes32 => mapping(uint256 => uint256)) private _userAuctionIndex; //_userAuctionIndex[auctionHash][auctionId]. 특정 세일의 userAuctionInfo index.
+    mapping(address => AuctionInfo[]) public userAuctionInfo; //userAuctionInfo[seller] 셀러의 옥션들 정보.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _userAuctionIndex; //_userAuctionIndex[auctionHash][auctionId]. 특정 옥션의 userAuctionInfo index.
 
-    mapping(uint256 => AuctionInfo[]) public auctionsOnMetaverse; //auctionsOnMetaverse[metaverseId]. 특정 메타버스에서 판매되고있는 모든 세일들.
-    mapping(bytes32 => mapping(uint256 => uint256)) private _auctionsOnMvIndex; //_auctionsOnMvIndex[auctionHash][auctionId]. 특정 세일의 auctionsOnMetaverse index.
+    mapping(uint256 => AuctionInfo[]) public auctionsOnMetaverse; //auctionsOnMetaverse[metaverseId]. 특정 메타버스의 모든 옥션들.
+    mapping(bytes32 => mapping(uint256 => uint256)) private _auctionsOnMvIndex; //_auctionsOnMvIndex[auctionHash][auctionId]. 특정 옥션의 auctionsOnMetaverse index.
 
     function onAuctionsCount(address item) external view returns (uint256) {
         return onAuctions[item].length;
@@ -838,11 +840,13 @@ contract ItemStore is Ownable, IItemStore {
         uint256 amount
     ) public view returns (bool) {
         if (_isERC1155(metaverseId, item)) {
-            require(amount > 0);
-            require(IKIP37(item).balanceOf(seller, id) >= amount);
+            if(amount == 0) return false;
+            if(IKIP37(item).balanceOf(seller, id) < amount) return false;
+            return true;
         } else {
-            require(amount == 1);
-            require(IKIP17(item).ownerOf(id) == seller);
+            if(amount != 1) return false;
+            if(IKIP17(item).ownerOf(id) != seller) return false;
+            return true;
         }
     }
 
@@ -851,21 +855,21 @@ contract ItemStore is Ownable, IItemStore {
         address item,
         uint256 id,
         uint256 amount,
-        uint256 startPrice,
+        uint256 startTotalPrice,
         uint256 endBlock
     ) external userWhitelist(msg.sender) itemWhitelist(metaverseId, item) returns (uint256 auctionId) {
-        require(startPrice > 0);
+        require(startTotalPrice > 0);
         require(endBlock > block.number);
         require(canCreateAuction(msg.sender, metaverseId, item, id, amount));
 
-        bytes32 hashForID = keccak256(
+        bytes32 verificationID = keccak256(
             abi.encodePacked(
                 msg.sender,
                 metaverseId,
                 item,
                 id,
                 amount,
-                startPrice,
+                startTotalPrice,
                 endBlock,
                 nonce[msg.sender]++
             )
@@ -880,9 +884,9 @@ contract ItemStore is Ownable, IItemStore {
                 item: item,
                 id: id,
                 amount: amount,
-                startPrice: startPrice,
+                startTotalPrice: startTotalPrice,
                 endBlock: endBlock,
-                hashForID: hashForID
+                verificationID: verificationID
             })
         );
 
@@ -899,18 +903,18 @@ contract ItemStore is Ownable, IItemStore {
 
         _itemTransfer(metaverseId, item, id, amount, msg.sender, address(this));
 
-        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startPrice, endBlock, hash, auctionId, hashForID);
+        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startTotalPrice, endBlock, hash, auctionId, verificationID);
     }
 
     function cancelAuction(
         bytes32 hash,
         uint256 auctionId,
-        bytes32 _hashForID
+        bytes32 _verificationID
     ) external {
-        // require(biddings[hash][auctionId].length == 0); 비딩 없는게 조건.
+        require(biddings[hash][_verificationID].length == 0);
         Auction memory auction = auctions[hash][auctionId];
         require(auction.seller == msg.sender);
-        require(auction.hashForID == _hashForID);
+        require(auction.verificationID == _verificationID);
 
         _removeAuction(hash, auctionId);
 
@@ -922,7 +926,7 @@ contract ItemStore is Ownable, IItemStore {
             auction.id,
             auction.seller,
             auction.amount,
-            auction.startPrice,
+            auction.startTotalPrice,
             hash,
             auctionId
         );
