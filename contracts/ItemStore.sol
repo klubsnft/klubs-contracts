@@ -48,15 +48,13 @@ contract ItemStore is Ownable, IItemStore {
         metaverses = _metaverses;
     }
 
-    modifier metaverseWhitelist(uint256 metaverseId) {
-        require(metaverseId < metaverses.metaverseCount() && !metaverses.banned(metaverseId));
-        _;
+    function isMetaverseWhitelisted(uint256 metaverseId) private view returns (bool) {
+        return (metaverseId < metaverses.metaverseCount() && !metaverses.banned(metaverseId));
     }
 
-    modifier itemWhitelist(uint256 metaverseId, address item) {
-        require(metaverseId < metaverses.metaverseCount() && !metaverses.banned(metaverseId));
-        require(metaverses.itemAdded(metaverseId, item));
-        _;
+    function isItemWhitelisted(uint256 metaverseId, address item) private view returns (bool) {
+        if(!isMetaverseWhitelisted(metaverseId)) return false;
+        return (metaverses.itemAdded(metaverseId, item));
     }
 
     mapping(address => bool) public isBanned;
@@ -410,6 +408,8 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id,
         uint256 amount
     ) public view returns (bool) {
+        if(!isItemWhitelisted(metaverseId, item)) return false;
+        
         if (_isERC1155(metaverseId, item)) {
             if(amount == 0) return false;
             IKIP37 nft = IKIP37(item);
@@ -441,11 +441,9 @@ contract ItemStore is Ownable, IItemStore {
                 metaverseIds.length == unitPrices.length &&
                 metaverseIds.length == partialBuyings.length
         );
-        uint256 metaverseCount = metaverses.metaverseCount();
         for (uint256 i = 0; i < metaverseIds.length; i++) {
             uint256 metaverseId = metaverseIds[i];
-            require(metaverseId < metaverseCount && !metaverses.banned(metaverseId));
-            require(metaverses.itemAdded(metaverseId, items[i]));
+
             require(unitPrices[i] > 0);
             require(canSell(msg.sender, metaverseId, items[i], ids[i], amounts[i]));
 
@@ -574,6 +572,7 @@ contract ItemStore is Ownable, IItemStore {
         );
         for (uint256 i = 0; i < items.length; i++) {
             Sale memory sale = sales[hashes[i]][saleIds[i]];
+            require(isItemWhitelisted(sale.metaverseId, sale.item));
             require(sale.item == items[i]);
             require(sale.seller != address(0) && sale.seller != msg.sender);
             require(sale.unitPrice == unitPrices[i]);
@@ -656,6 +655,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id,
         uint256 amount
     ) public view returns (bool) {
+        if(!isItemWhitelisted(metaverseId, item)) return false;
         if (_isERC1155(metaverseId, item)) {
             if(amount == 0) return false;
             return true;
@@ -674,7 +674,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 unitPrice,
         bool partialBuying,
         uint256 _mileage
-    ) external userWhitelist(msg.sender) itemWhitelist(metaverseId, item) returns (uint256 offerId) {
+    ) external userWhitelist(msg.sender) returns (uint256 offerId) {
         require(unitPrice > 0);
         require(canOffer(msg.sender, metaverseId, item, id, amount));
 
@@ -754,6 +754,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 unitPrice
     ) external userWhitelist(msg.sender) {
         Offer memory _offer = offers[hash][offerId];
+        require(isItemWhitelisted(_offer.metaverseId, _offer.item));
         require(_offer.item == item);
         require(_offer.offeror != address(0) && _offer.offeror != msg.sender);
         require(_offer.unitPrice == unitPrice);
@@ -839,6 +840,8 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id,
         uint256 amount
     ) public view returns (bool) {
+        if(!isItemWhitelisted(metaverseId, item)) return false;
+
         if (_isERC1155(metaverseId, item)) {
             if(amount == 0) return false;
             if(IKIP37(item).balanceOf(seller, id) < amount) return false;
@@ -857,7 +860,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 amount,
         uint256 startTotalPrice,
         uint256 endBlock
-    ) external userWhitelist(msg.sender) itemWhitelist(metaverseId, item) returns (uint256 auctionId) {
+    ) external userWhitelist(msg.sender) returns (uint256 auctionId) {
         require(startTotalPrice > 0);
         require(endBlock > block.number);
         require(canCreateAuction(msg.sender, metaverseId, item, id, amount));
