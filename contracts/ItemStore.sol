@@ -406,8 +406,7 @@ contract ItemStore is Ownable, IItemStore {
             require(metaverseId < metaverseCount && !metaverses.banned(metaverseId));
             require(metaverses.itemAdded(metaverseId, items[i]));
             require(unitPrices[i] > 0);
-
-            canSell(msg.sender, metaverseId, items[i], ids[i], amounts[i]);
+            require(canSell(msg.sender, metaverseId, items[i], ids[i], amounts[i]));
 
             bytes32 hash = keccak256(abi.encodePacked(items[i], ids[i]));
             uint256 saleId = sales[hash].length;
@@ -610,7 +609,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 _mileage
     ) external userWhitelist(msg.sender) itemWhitelist(metaverseId, item) returns (uint256 offerId) {
         require(unitPrice > 0 && amount > 0);
-        canOffer(msg.sender, metaverseId, item, id, amount);
+        require(canOffer(msg.sender, metaverseId, item, id, amount));
 
         bytes32 hash = keccak256(abi.encodePacked(item, id));
 
