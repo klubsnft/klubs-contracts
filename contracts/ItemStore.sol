@@ -231,18 +231,68 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     function _removeAuction(bytes32 hash, uint256 auctionId) private {
-        // if (checkAuction(metaverseId, addr, id) == true) {
-        //     uint256 lastIndex = onAuctionsCount(metaverseId, addr).sub(1);
-        //     uint256 index = onAuctionsIndex[metaverseId][addr][id];
-        //     if (index != lastIndex) {
-        //         uint256 last = onAuctions[metaverseId][addr][lastIndex];
-        //         onAuctions[metaverseId][addr][index] = last;
-        //         onAuctionsIndex[metaverseId][addr][last] = index;
-        //     }
-        //     onAuctions[metaverseId][addr].length--;
-        //     delete onAuctionsIndex[metaverseId][addr][id];
-        // }
-        // delete auctions[metaverseId][addr][id];
+        Auction memory auction = auctions[hash][auctionId];
+
+        //delete auctions
+        uint256 lastAuctionId = auctions[hash].length.sub(1);
+        Auction memory lastAuction = auctions[hash][lastAuctionId];
+        if (auctionId != lastAuctionId) {
+            auctions[hash][auctionId] = lastAuction;
+            emit ChangeAuctionId(
+                lastAuction.metaverseId,
+                lastAuction.item,
+                lastAuction.id,
+                lastAuction.seller,
+                lastAuction.amount,
+                lastAuction.startPrice,
+                lastAuction.endBlock,
+                hash,
+                lastAuctionId,
+                auctionId
+            );
+        }
+        auctions[hash].length--;
+
+        //delete onAuctions
+        uint256 lastIndex = onAuctions[lastAuction.item].length.sub(1);
+        uint256 index = _onAuctionsIndex[hash][lastAuctionId];
+        if (index != lastIndex) {
+            AuctionInfo memory lastAuctionInfo = onAuctions[lastAuction.item][lastIndex];
+            onAuctions[lastAuction.item][index] = lastAuctionInfo;
+            _onAuctionsIndex[lastAuctionInfo.hash][lastAuctionInfo.auctionId] = index;
+        }
+        onAuctions[lastAuction.item].length--;
+        delete _onAuctionsIndex[hash][lastAuctionId];
+
+        //delete userAuctionInfo
+        lastIndex = userAuctionInfo[auction.seller].length.sub(1);
+        index = _userAuctionIndex[hash][auctionId];
+        if (index != lastIndex) {
+            AuctionInfo memory lastAuctionInfo = userAuctionInfo[auction.seller][lastIndex];
+            userAuctionInfo[auction.seller][index] = lastAuctionInfo;
+            _userAuctionIndex[lastAuctionInfo.hash][lastAuctionInfo.auctionId] = index;
+        }
+        userAuctionInfo[auction.seller].length--;
+
+        uint256 _lastAuctionUserIndex = _userAuctionIndex[hash][lastAuctionId];
+        userAuctionInfo[lastAuction.seller][_lastAuctionUserIndex].auctionId = auctionId;
+        _userAuctionIndex[hash][auctionId] = _lastAuctionUserIndex;
+        delete _userAuctionIndex[hash][lastAuctionId];
+
+        //delete auctionsOnMetaverse
+        lastIndex = auctionsOnMetaverse[auction.metaverseId].length.sub(1);
+        index = _auctionsOnMvIndex[hash][auctionId];
+        if (index != lastIndex) {
+            AuctionInfo memory lastAuctionInfo = auctionsOnMetaverse[auction.metaverseId][lastIndex];
+            auctionsOnMetaverse[auction.metaverseId][index] = lastAuctionInfo;
+            _auctionsOnMvIndex[lastAuctionInfo.hash][lastAuctionInfo.auctionId] = index;
+        }
+        auctionsOnMetaverse[auction.metaverseId].length--;
+
+        uint256 _lastAuctionMvIndex = _auctionsOnMvIndex[hash][lastAuctionId];
+        auctionsOnMetaverse[lastAuction.metaverseId][_lastAuctionMvIndex].auctionId = auctionId;
+        _auctionsOnMvIndex[hash][auctionId] = _lastAuctionMvIndex;
+        delete _auctionsOnMvIndex[hash][lastAuctionId];
     }
 
     function _distributeReward(
@@ -823,4 +873,72 @@ contract ItemStore is Ownable, IItemStore {
         return (computedHash == checkingHash);
     }
 
+    function createAuction(
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount,
+        uint256 startPrice,
+        uint256 endBlock
+    ) external userWhitelist(msg.sender) itemWhitelist(metaverseId, item) returns (uint256 auctionId) {
+        require(startPrice > 0);
+        require(endBlock > block.number);
+        require(canCreateAuction(msg.sender, metaverseId, item, id, amount));
+
+        bytes32 hash = keccak256(abi.encodePacked(item, id));
+
+        auctionId = auctions[hash].length;
+        auctions[hash].push(
+            Auction({
+                seller: msg.sender,
+                metaverseId: metaverseId,
+                item: item,
+                id: id,
+                amount: amount,
+                startPrice: startPrice,
+                endBlock: endBlock
+            })
+        );
+
+        AuctionInfo memory _info = AuctionInfo({hash: hash, auctionId: auctionId});
+
+        _onAuctionsIndex[hash][auctionId] = onAuctions[item].length;
+        onAuctions[item].push(_info);
+
+        _userAuctionIndex[hash][auctionId] = userAuctionInfo[msg.sender].length;
+        userAuctionInfo[msg.sender].push(_info);
+
+        _auctionsOnMvIndex[hash][auctionId] = auctionsOnMetaverse[metaverseId].length;
+        auctionsOnMetaverse[metaverseId].push(_info);
+
+        _itemTransfer(metaverseId, item, id, amount, msg.sender, address(this));
+
+        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startPrice, endBlock, hash, auctionId);
+    }
+
+    function cancelAuction(
+        bytes32 hash,
+        uint256 auctionId,
+        bytes32 checkingHash
+    ) external {
+        // require(biddings[hash][auctionId].length == 0); 비딩 없는게 조건.
+        Auction memory auction = auctions[hash][auctionId];
+        require(auction.seller == msg.sender);
+        require(_checkSaleHash(hash, auctionId, checkingHash));
+
+        _removeAuction(hash, auctionId);
+
+        _itemTransfer(auction.metaverseId, auction.item, auction.id, auction.amount, address(this), msg.sender);
+
+        emit CancelAuction(
+            auction.metaverseId,
+            auction.item,
+            auction.id,
+            auction.seller,
+            auction.amount,
+            auction.startPrice,
+            hash,
+            auctionId
+        );
+    }
 }
