@@ -138,7 +138,18 @@ interface IItemStore {
         uint256 oldAuctionId,
         uint256 newAuctionId
     );
-    event Bid(uint256 indexed metaverseId, address indexed item, uint256 id, address bidder, uint256 unitPrice);
+    event Bid(
+        uint256 indexed metaverseId,
+        address indexed item,
+        uint256 id,
+        address bidder,
+        uint256 amount,
+        uint256 price,
+        bytes32 indexed auctionHash,
+        uint256 auctionId,
+        bytes32 auctionVerificationID,
+        bytes32 biddingVerificationID
+    );
     event Claim(uint256 indexed metaverseId, address indexed item, uint256 id, address bidder, uint256 unitPrice);
 
     event CancelSaleByOwner(uint256 indexed metaverseId, address indexed item, uint256 id);

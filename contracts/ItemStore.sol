@@ -934,4 +934,163 @@ contract ItemStore is Ownable, IItemStore {
             auctionId
         );
     }
+
+    //Bidding
+    struct Bidding {
+        address bidder;
+        uint256 metaverseId;
+        address item;
+        uint256 id;
+        uint256 amount;
+        uint256 price;
+        uint256 mileage;
+        bytes32 verificationID;
+    }
+
+    struct BiddingInfo {
+        bytes32 hash;
+        bytes32 auctionVerificationID;
+        uint256 biddingIndex;
+        bytes32 biddingVerificationID;
+    }
+
+    mapping(bytes32 => mapping(bytes32 => Bidding[])) public biddings; //biddings[hash][auction_verificationID]. hash: item,id
+
+    mapping(address => BiddingInfo[]) public userBiddingInfo; //userBiddingInfo[bidder] 비더의 비딩들 정보.
+    mapping(bytes32 => mapping(bytes32 => uint256)) private _userBiddingIndex; //_userBiddingIndex[hash][bidding_verificationID]. 특정 비딩의 userBiddingInfo index.
+
+    function userBiddingInfoLength(address bidder) external view returns (uint256) {
+        return userBiddingInfo[bidder].length;
+    }
+
+    function biddingCount(bytes32 hash, bytes32 verificationID) external view returns (uint256) {
+        return biddings[hash][verificationID].length;
+    }
+
+    function canBid(
+        address bidder,
+        uint256 price,
+        bytes32 auctionHash,
+        uint256 auctionId,
+        bytes32 auctionVerificationID
+    ) public view returns (bool) {
+        Auction memory auction = auctions[auctionHash][auctionId];
+        if (!isItemWhitelisted(auction.metaverseId, auction.item)) return false;
+
+        if (auction.verificationID != auctionVerificationID) return false;
+        if (auction.seller == address(0) || auction.seller == bidder) return false;
+        if (auction.endBlock <= block.number) return false;
+
+        Bidding[] storage bs = biddings[auctionHash][auctionVerificationID];
+        uint256 biddingLength = bs.length;
+        if (biddingLength == 0) {
+            if (auction.startTotalPrice > price) return false;
+            return true;
+        } else {
+            if (bs[biddingLength - 1].price >= price) return false;
+            return true;
+        }
+    }
+
+    function bid(
+        bytes32 auctionHash,
+        uint256 auctionId,
+        bytes32 auctionVerificationID,
+        uint256 price,
+        uint256 _mileage
+    ) external userWhitelist(msg.sender) returns (uint256 biddingId) {
+        require(canBid(msg.sender, price, auctionHash, auctionId, auctionVerificationID));
+        Auction memory auction = auctions[auctionHash][auctionId];
+
+        require(auction.metaverseId < metaverses.metaverseCount() && !metaverses.banned(auction.metaverseId));
+        require(metaverses.itemAdded(auction.metaverseId, auction.item));
+
+        Bidding[] storage bs = biddings[auctionHash][auctionVerificationID];
+        biddingId = bs.length;
+        if (biddingId > 0) {
+            Bidding storage bestBidding = bs[biddingId - 1];
+            address lastBidder = bestBidding.bidder;
+            uint256 lastMileage = bestBidding.mileage;
+            mix.transfer(lastBidder, bestBidding.price.sub(lastMileage));
+            if (lastMileage > 0) {
+                mix.approve(address(mileage), lastMileage);
+                mileage.charge(lastBidder, lastMileage);
+            }
+            _removeUserBiddingInfo(lastBidder, auctionHash, bestBidding.verificationID);
+        }
+
+        bytes32 biddingVerificationID = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                auction.metaverseId,
+                auction.item,
+                auction.id,
+                auction.amount,
+                price,
+                _mileage,
+                nonce[msg.sender]++
+            )
+        );
+
+        bs.push(
+            Bidding({
+                bidder: msg.sender,
+                metaverseId: auction.metaverseId,
+                item: auction.item,
+                id: auction.id,
+                amount: auction.amount,
+                price: price,
+                mileage: _mileage,
+                verificationID: biddingVerificationID
+            })
+        );
+
+        _userBiddingIndex[auctionHash][biddingVerificationID] = userBiddingInfo[msg.sender].length;
+        userBiddingInfo[msg.sender].push(
+            BiddingInfo({
+                hash: auctionHash,
+                auctionVerificationID: auctionVerificationID,
+                biddingIndex: biddingId,
+                biddingVerificationID: biddingVerificationID
+            })
+        );
+
+        mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
+        if (_mileage > 0) mileage.use(msg.sender, _mileage);
+
+        if (block.number >= auction.endBlock.sub(auctionExtensionInterval)) {
+            auctions[auctionHash][auctionId].endBlock = auction.endBlock.add(auctionExtensionInterval);
+        }
+
+        emit Bid(
+            auction.metaverseId,
+            auction.item,
+            auction.id,
+            msg.sender,
+            auction.amount,
+            price,
+            auctionHash,
+            auctionId,
+            auctionVerificationID,
+            biddingVerificationID
+        );
+    }
+
+    function _removeUserBiddingInfo(
+        address bidder,
+        bytes32 hash,
+        bytes32 biddingVerificationID
+    ) private {
+        uint256 lastIndex = userBiddingInfo[bidder].length.sub(1);
+        uint256 index = _userBiddingIndex[hash][biddingVerificationID];
+
+        if (index != lastIndex) {
+            BiddingInfo memory lastBiddingInfo = userBiddingInfo[bidder][lastIndex];
+            userBiddingInfo[bidder][index] = lastBiddingInfo;
+            _userBiddingIndex[lastBiddingInfo.hash][lastBiddingInfo.biddingVerificationID] = index;
+        }
+        delete _userBiddingIndex[hash][biddingVerificationID];
+        userBiddingInfo[bidder].length--;
+    }
+
 }
