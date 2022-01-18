@@ -357,6 +357,8 @@ contract ItemStore is Ownable, IItemStore {
         mix.transfer(seller, price.sub(_fee).sub(_royalty).sub(_mileage));
     }
 
+    mapping(address => uint256) public nonce;
+
     //Sale
     struct Sale {
         address seller;
@@ -366,6 +368,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 amount;
         uint256 unitPrice;
         bool partialBuying;
+        bytes32 hashForID;
     }
 
     struct SaleInfo {
@@ -423,26 +426,6 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
-    function _checkSaleHash(
-        bytes32 hash,
-        uint256 saleId,
-        bytes32 checkingHash
-    ) internal view returns (bool) {
-        Sale memory sale = sales[hash][saleId];
-        bytes32 computedHash = keccak256(
-            abi.encodePacked(
-                sale.seller,
-                sale.metaverseId,
-                sale.item,
-                sale.id,
-                sale.amount,
-                sale.unitPrice,
-                sale.partialBuying
-            )
-        );
-        return (computedHash == checkingHash);
-    }
-
     function sell(
         uint256[] calldata metaverseIds,
         address[] calldata items,
@@ -466,6 +449,19 @@ contract ItemStore is Ownable, IItemStore {
             require(unitPrices[i] > 0);
             require(canSell(msg.sender, metaverseId, items[i], ids[i], amounts[i]));
 
+            bytes32 hashForID = keccak256(
+                abi.encodePacked(
+                    msg.sender,
+                    metaverseIds[i],
+                    items[i],
+                    ids[i],
+                    amounts[i],
+                    unitPrices[i],
+                    partialBuyings[i],
+                    nonce[msg.sender]++
+                )
+            );
+
             bytes32 hash = keccak256(abi.encodePacked(items[i], ids[i]));
             uint256 saleId = sales[hash].length;
             sales[hash].push(
@@ -476,7 +472,8 @@ contract ItemStore is Ownable, IItemStore {
                     id: ids[i],
                     amount: amounts[i],
                     unitPrice: unitPrices[i],
-                    partialBuying: partialBuyings[i]
+                    partialBuying: partialBuyings[i],
+                    hashForID: hashForID
                 })
             );
 
@@ -503,7 +500,8 @@ contract ItemStore is Ownable, IItemStore {
                 unitPrices[i],
                 partialBuyings[i],
                 hash,
-                saleId
+                saleId,
+                hashForID
             );
         }
     }
@@ -512,14 +510,14 @@ contract ItemStore is Ownable, IItemStore {
         bytes32[] calldata hashes,
         uint256[] calldata saleIds,
         uint256[] calldata unitPrices,
-        bytes32[] calldata checkingHashes
+        bytes32[] calldata _hashForIDes
     ) external userWhitelist(msg.sender) {
         require(hashes.length == saleIds.length && hashes.length == unitPrices.length);
         for (uint256 i = 0; i < hashes.length; i++) {
             Sale storage sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller == msg.sender);
             require(sale.unitPrice != unitPrices[i]);
-            require(_checkSaleHash(hashes[i], saleIds[i], checkingHashes[i]));
+            require(sale.hashForID == _hashForIDes[i]);
 
             sale.unitPrice = unitPrices[i];
             emit ChangeSellPrice(
@@ -537,13 +535,13 @@ contract ItemStore is Ownable, IItemStore {
     function cancelSale(
         bytes32[] calldata hashes,
         uint256[] calldata saleIds,
-        bytes32[] calldata checkingHashes
+        bytes32[] calldata _hashForIDes
     ) external {
-        require(hashes.length == saleIds.length && hashes.length == checkingHashes.length);
+        require(hashes.length == saleIds.length && hashes.length == _hashForIDes.length);
         for (uint256 i = 0; i < hashes.length; i++) {
             Sale memory sale = sales[hashes[i]][saleIds[i]];
             require(sale.seller == msg.sender);
-            require(_checkSaleHash(hashes[i], saleIds[i], checkingHashes[i]));
+            require(sale.hashForID == _hashForIDes[i]);
 
             _removeSale(hashes[i], saleIds[i]);
             emit CancelSale(
@@ -630,6 +628,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 unitPrice;
         bool partialBuying;
         uint256 mileage;
+        bytes32 hashForID;
     }
 
     struct OfferInfo {
@@ -665,27 +664,6 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
-    function _checkOfferHash(
-        bytes32 hash,
-        uint256 offerId,
-        bytes32 checkingHash
-    ) internal view returns (bool) {
-        Offer memory offer = offers[hash][offerId];
-        bytes32 computedHash = keccak256(
-            abi.encodePacked(
-                offer.offeror,
-                offer.metaverseId,
-                offer.item,
-                offer.id,
-                offer.amount,
-                offer.unitPrice,
-                offer.partialBuying,
-                offer.mileage
-            )
-        );
-        return (computedHash == checkingHash);
-    }
-
     function makeOffer(
         uint256 metaverseId,
         address item,
@@ -698,8 +676,21 @@ contract ItemStore is Ownable, IItemStore {
         require(unitPrice > 0);
         require(canOffer(msg.sender, metaverseId, item, id, amount));
 
-        bytes32 hash = keccak256(abi.encodePacked(item, id));
+        bytes32 hashForID = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                metaverseId,
+                item,
+                id,
+                amount,
+                unitPrice,
+                partialBuying,
+                _mileage,
+                nonce[msg.sender]++
+            )
+        );
 
+        bytes32 hash = keccak256(abi.encodePacked(item, id));
         offerId = offers[hash].length;
         offers[hash].push(
             Offer({
@@ -710,7 +701,8 @@ contract ItemStore is Ownable, IItemStore {
                 amount: amount,
                 unitPrice: unitPrice,
                 partialBuying: partialBuying,
-                mileage: _mileage
+                mileage: _mileage,
+                hashForID: hashForID
             })
         );
 
@@ -720,17 +712,17 @@ contract ItemStore is Ownable, IItemStore {
         mix.transferFrom(msg.sender, address(this), amount.mul(unitPrice).sub(_mileage));
         if (_mileage > 0) mileage.use(msg.sender, _mileage);
 
-        emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, hash, offerId);
+        emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, hash, offerId, hashForID);
     }
 
     function cancelOffer(
         bytes32 hash,
         uint256 offerId,
-        bytes32 checkingHash
+        bytes32 _hashForID
     ) external {
         Offer memory _offer = offers[hash][offerId];
         require(_offer.offeror == msg.sender);
-        require(_checkOfferHash(hash, offerId, checkingHash));
+        require(_offer.hashForID == _hashForID);
 
         _removeOffer(hash, offerId);
 
@@ -807,6 +799,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 amount;
         uint256 startPrice;
         uint256 endBlock;
+        bytes32 hashForID;
     }
 
     struct AuctionInfo {
@@ -853,26 +846,6 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
-    function _checkAuctionHash(
-        bytes32 hash,
-        uint256 auctionId,
-        bytes32 checkingHash
-    ) internal view returns (bool) {
-        Auction memory auction = auctions[hash][auctionId];
-        bytes32 computedHash = keccak256(
-            abi.encodePacked(
-                auction.seller,
-                auction.metaverseId,
-                auction.item,
-                auction.id,
-                auction.amount,
-                auction.startPrice,
-                auction.endBlock
-            )
-        );
-        return (computedHash == checkingHash);
-    }
-
     function createAuction(
         uint256 metaverseId,
         address item,
@@ -885,8 +858,20 @@ contract ItemStore is Ownable, IItemStore {
         require(endBlock > block.number);
         require(canCreateAuction(msg.sender, metaverseId, item, id, amount));
 
-        bytes32 hash = keccak256(abi.encodePacked(item, id));
+        bytes32 hashForID = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                metaverseId,
+                item,
+                id,
+                amount,
+                startPrice,
+                endBlock,
+                nonce[msg.sender]++
+            )
+        );
 
+        bytes32 hash = keccak256(abi.encodePacked(item, id));
         auctionId = auctions[hash].length;
         auctions[hash].push(
             Auction({
@@ -896,7 +881,8 @@ contract ItemStore is Ownable, IItemStore {
                 id: id,
                 amount: amount,
                 startPrice: startPrice,
-                endBlock: endBlock
+                endBlock: endBlock,
+                hashForID: hashForID
             })
         );
 
@@ -913,18 +899,18 @@ contract ItemStore is Ownable, IItemStore {
 
         _itemTransfer(metaverseId, item, id, amount, msg.sender, address(this));
 
-        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startPrice, endBlock, hash, auctionId);
+        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startPrice, endBlock, hash, auctionId, hashForID);
     }
 
     function cancelAuction(
         bytes32 hash,
         uint256 auctionId,
-        bytes32 checkingHash
+        bytes32 _hashForID
     ) external {
         // require(biddings[hash][auctionId].length == 0); 비딩 없는게 조건.
         Auction memory auction = auctions[hash][auctionId];
         require(auction.seller == msg.sender);
-        require(_checkSaleHash(hash, auctionId, checkingHash));
+        require(auction.hashForID == _hashForID);
 
         _removeAuction(hash, auctionId);
 

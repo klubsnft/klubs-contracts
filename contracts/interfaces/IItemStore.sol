@@ -10,7 +10,8 @@ interface IItemStore {
         uint256 unitPrice,
         bool partialBuying,
         bytes32 indexed hash,
-        uint256 saleId
+        uint256 saleId,
+        bytes32 hashForID
     );
     event ChangeSellPrice(
         uint256 indexed metaverseId,
@@ -65,7 +66,8 @@ interface IItemStore {
         uint256 unitPrice,
         bool partialBuying,
         bytes32 indexed hash,
-        uint256 offerId
+        uint256 offerId,
+        bytes32 hashForID
     );
     event CancelOffer(
         uint256 indexed metaverseId,
@@ -111,7 +113,8 @@ interface IItemStore {
         uint256 startPrice,
         uint256 endBlock,
         bytes32 indexed hash,
-        uint256 auctionId
+        uint256 auctionId,
+        bytes32 hashForID
     );
     event CancelAuction(
         uint256 indexed metaverseId,
