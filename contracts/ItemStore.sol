@@ -448,16 +448,7 @@ contract ItemStore is Ownable, IItemStore {
             require(canSell(msg.sender, metaverseId, items[i], ids[i], amounts[i]));
 
             bytes32 verificationID = keccak256(
-                abi.encodePacked(
-                    msg.sender,
-                    metaverseIds[i],
-                    items[i],
-                    ids[i],
-                    amounts[i],
-                    unitPrices[i],
-                    partialBuyings[i],
-                    nonce[msg.sender]++
-                )
+                abi.encodePacked(msg.sender, metaverseIds[i], items[i], ids[i], amounts[i], unitPrices[i], partialBuyings[i], nonce[msg.sender]++)
             );
 
             bytes32 hash = keccak256(abi.encodePacked(items[i], ids[i]));
@@ -489,18 +480,7 @@ contract ItemStore is Ownable, IItemStore {
             bytes32 iisHash = keccak256(abi.encodePacked(items[i], ids[i], msg.sender));
             userOnSaleAmounts[iisHash] = userOnSaleAmounts[iisHash].add(amounts[i]);
 
-            emit Sell(
-                metaverseId,
-                items[i],
-                ids[i],
-                msg.sender,
-                amounts[i],
-                unitPrices[i],
-                partialBuyings[i],
-                hash,
-                saleId,
-                verificationID
-            );
+            emit Sell(metaverseId, items[i], ids[i], msg.sender, amounts[i], unitPrices[i], partialBuyings[i], hash, saleId, verificationID);
         }
     }
 
@@ -518,15 +498,7 @@ contract ItemStore is Ownable, IItemStore {
             require(sale.verificationID == _verificationIDes[i]);
 
             sale.unitPrice = unitPrices[i];
-            emit ChangeSellPrice(
-                sale.metaverseId,
-                sale.item,
-                sale.id,
-                msg.sender,
-                unitPrices[i],
-                hashes[i],
-                saleIds[i]
-            );
+            emit ChangeSellPrice(sale.metaverseId, sale.item, sale.id, msg.sender, unitPrices[i], hashes[i], saleIds[i]);
         }
     }
 
@@ -542,16 +514,7 @@ contract ItemStore is Ownable, IItemStore {
             require(sale.verificationID == _verificationIDes[i]);
 
             _removeSale(hashes[i], saleIds[i]);
-            emit CancelSale(
-                sale.metaverseId,
-                sale.item,
-                sale.id,
-                msg.sender,
-                sale.amount,
-                sale.unitPrice,
-                hashes[i],
-                saleIds[i]
-            );
+            emit CancelSale(sale.metaverseId, sale.item, sale.id, msg.sender, sale.amount, sale.unitPrice, hashes[i], saleIds[i]);
         }
     }
 
@@ -602,18 +565,7 @@ contract ItemStore is Ownable, IItemStore {
                 isFulfilled = true;
             }
 
-            emit Buy(
-                sale.metaverseId,
-                sale.item,
-                sale.id,
-                sale.seller,
-                msg.sender,
-                amounts[i],
-                unitPrices[i],
-                hashes[i],
-                saleIds[i],
-                isFulfilled
-            );
+            emit Buy(sale.metaverseId, sale.item, sale.id, sale.seller, msg.sender, amounts[i], unitPrices[i], hashes[i], saleIds[i], isFulfilled);
         }
     }
 
@@ -679,17 +631,7 @@ contract ItemStore is Ownable, IItemStore {
         require(canOffer(msg.sender, metaverseId, item, id, amount));
 
         bytes32 verificationID = keccak256(
-            abi.encodePacked(
-                msg.sender,
-                metaverseId,
-                item,
-                id,
-                amount,
-                unitPrice,
-                partialBuying,
-                _mileage,
-                nonce[msg.sender]++
-            )
+            abi.encodePacked(msg.sender, metaverseId, item, id, amount, unitPrice, partialBuying, _mileage, nonce[msg.sender]++)
         );
 
         bytes32 hash = keccak256(abi.encodePacked(item, id));
@@ -714,18 +656,7 @@ contract ItemStore is Ownable, IItemStore {
         mix.transferFrom(msg.sender, address(this), amount.mul(unitPrice).sub(_mileage));
         if (_mileage > 0) mileage.use(msg.sender, _mileage);
 
-        emit MakeOffer(
-            metaverseId,
-            item,
-            id,
-            msg.sender,
-            amount,
-            unitPrice,
-            partialBuying,
-            hash,
-            offerId,
-            verificationID
-        );
+        emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, hash, offerId, verificationID);
     }
 
     function cancelOffer(
@@ -745,16 +676,7 @@ contract ItemStore is Ownable, IItemStore {
             mileage.charge(msg.sender, _offer.mileage);
         }
 
-        emit CancelOffer(
-            _offer.metaverseId,
-            _offer.item,
-            _offer.id,
-            msg.sender,
-            _offer.amount,
-            _offer.unitPrice,
-            hash,
-            offerId
-        );
+        emit CancelOffer(_offer.metaverseId, _offer.item, _offer.id, msg.sender, _offer.amount, _offer.unitPrice, hash, offerId);
     }
 
     function acceptOffer(
@@ -908,18 +830,7 @@ contract ItemStore is Ownable, IItemStore {
 
         _itemTransfer(metaverseId, item, id, amount, msg.sender, address(this));
 
-        emit CreateAuction(
-            metaverseId,
-            item,
-            id,
-            msg.sender,
-            amount,
-            startTotalPrice,
-            endBlock,
-            hash,
-            auctionId,
-            verificationID
-        );
+        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startTotalPrice, endBlock, hash, auctionId, verificationID);
     }
 
     function cancelAuction(
@@ -936,16 +847,7 @@ contract ItemStore is Ownable, IItemStore {
 
         _itemTransfer(auction.metaverseId, auction.item, auction.id, auction.amount, address(this), msg.sender);
 
-        emit CancelAuction(
-            auction.metaverseId,
-            auction.item,
-            auction.id,
-            auction.seller,
-            auction.amount,
-            auction.startTotalPrice,
-            hash,
-            auctionId
-        );
+        emit CancelAuction(auction.metaverseId, auction.item, auction.id, auction.seller, auction.amount, auction.startTotalPrice, hash, auctionId);
     }
 
     //Bidding
@@ -1033,16 +935,7 @@ contract ItemStore is Ownable, IItemStore {
         }
 
         bytes32 biddingVerificationID = keccak256(
-            abi.encodePacked(
-                msg.sender,
-                auction.metaverseId,
-                auction.item,
-                auction.id,
-                auction.amount,
-                price,
-                _mileage,
-                nonce[msg.sender]++
-            )
+            abi.encodePacked(msg.sender, auction.metaverseId, auction.item, auction.id, auction.amount, price, _mileage, nonce[msg.sender]++)
         );
 
         bs.push(
@@ -1105,5 +998,4 @@ contract ItemStore is Ownable, IItemStore {
         delete _userBiddingIndex[hash][biddingVerificationID];
         userBiddingInfo[bidder].length--;
     }
-
 }
