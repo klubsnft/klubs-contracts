@@ -998,4 +998,36 @@ contract ItemStore is Ownable, IItemStore {
         delete _userBiddingIndex[hash][biddingVerificationID];
         userBiddingInfo[bidder].length--;
     }
+
+    function claim(
+        bytes32 auctionHash,
+        uint256 auctionId,
+        bytes32 auctionVerificationID
+    ) external {
+        Auction memory auction = auctions[auctionHash][auctionId];
+        Bidding[] storage bs = biddings[auctionHash][auctionVerificationID];
+        Bidding memory bidding = bs[bs.length.sub(1)];
+
+        require(block.number >= auction.endBlock);
+
+        _itemTransfer(auction.metaverseId, auction.item, auction.id, auction.amount, address(this), bidding.bidder);
+        _distributeReward(auction.metaverseId, bidding.bidder, auction.seller, bidding.price);
+
+        _removeAuction(auctionHash, auctionId);
+        _removeUserBiddingInfo(bidding.bidder, auctionHash, bidding.verificationID);
+        delete biddings[auctionHash][auctionVerificationID];
+
+        emit Claim(
+            auction.metaverseId,
+            auction.item,
+            auction.id,
+            bidding.bidder,
+            auction.amount,
+            bidding.price,
+            auctionHash,
+            auctionId,
+            auctionVerificationID,
+            bidding.verificationID
+        );
+    }
 }
