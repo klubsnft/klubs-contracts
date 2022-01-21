@@ -84,215 +84,249 @@ interface IItemStore {
     event Ban(address indexed user);
     event Unban(address indexed user);
 
-    // function auctionExtensionInterval() external view returns (uint256);
+    function fee() external view returns (uint256);
 
-    // function isBanned(address user) external view returns (bool);
+    function feeReceiver() external view returns (address);
 
-    // function batchTransfer(
-    //     uint256[] calldata metaverseIds,
-    //     address[] calldata addrs,
-    //     uint256[] calldata ids,
-    //     address[] calldata to,
-    //     uint256[] calldata amounts
-    // ) external;
+    function auctionExtensionInterval() external view returns (uint256);
 
-    // function sales(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id
-    // )
-    //     external
-    //     view
-    //     returns (
-    //         address seller,
-    //         uint256 price,
-    //         uint256 amount
-    //     );
+    function isBanned(address user) external view returns (bool);
 
-    // function userSellInfo(address seller, uint256 index)
-    //     external
-    //     view
-    //     returns (
-    //         uint256 metaverseId,
-    //         uint256 id,
-    //         uint256 price,
-    //         uint256 amount
-    //     );
+    function batchTransfer(
+        uint256[] calldata metaverseIds,
+        address[] calldata items,
+        uint256[] calldata ids,
+        address[] calldata to,
+        uint256[] calldata amounts
+    ) external;
 
-    // function userSellInfoLength(address seller) external view returns (uint256);
+    function nonce(address user) external view returns (uint256);
 
-    // function checkSelling(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id
-    // ) external view returns (bool);
+    //Sale
+    function sales(
+        address item,
+        uint256 id,
+        uint256 saleId
+    )
+        external
+        view
+        returns (
+            address seller,
+            uint256 metaverseId,
+            address _item,
+            uint256 _id,
+            uint256 amount,
+            uint256 unitPrice,
+            bool partialBuying,
+            bytes32 verificationID
+        );
 
-    // function onSalesCount(uint256 metaverseId, address addr) external view returns (uint256);
+    function onSales(address item, uint256 index) external view returns (bytes32 saleVerificationID);
 
-    // function onSales(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 index
-    // ) external view returns (uint256);
+    function userSellInfo(address seller, uint256 index) external view returns (bytes32 saleVerificationID);
 
-    // function sell(
-    //     uint256[] calldata metaverseIds,
-    //     address[] calldata addrs,
-    //     uint256[] calldata ids,
-    //     uint256[] calldata prices,
-    //     uint256[] calldata amounts
-    // ) external;
+    function salesOnMetaverse(address metaverseId, uint256 index) external view returns (bytes32 saleVerificationID);
 
-    // function changeSellPrice(
-    //     uint256[] calldata metaverseIds,
-    //     address[] calldata addrs,
-    //     uint256[] calldata ids,
-    //     uint256[] calldata prices
-    // ) external;
+    function userOnSaleAmounts(
+        address seller,
+        address item,
+        uint256 id
+    ) external view returns (uint256);
 
-    // function cancelSale(
-    //     uint256[] calldata metaverseIds,
-    //     address[] calldata addrs,
-    //     uint256[] calldata ids
-    // ) external;
+    function getSaleInfo(bytes32 saleVerificationID)
+        external
+        view
+        returns (
+            address item,
+            uint256 id,
+            uint256 saleId
+        );
 
-    // function buy(
-    //     uint256[] calldata metaverseIds,
-    //     address[] calldata addrs,
-    //     uint256[] calldata ids
-    // ) external;
+    function salesCount(address item, uint256 id) external view returns (uint256);
 
-    // function offers(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id,
-    //     uint256 index
-    // ) external view returns (address offeror, uint256 price);
+    function onSalesCount(address item) external view returns (uint256);
 
-    // function userOfferInfo(address offeror, uint256 index)
-    //     external
-    //     view
-    //     returns (
-    //         address pfp,
-    //         uint256 id,
-    //         uint256 price
-    //     );
+    function userSellInfoLength(address seller) external view returns (uint256);
 
-    // function userOfferInfoLength(address offeror) external view returns (uint256);
+    function salesOnMetaverseLength(uint256 metaverseId) external view returns (uint256);
 
-    // function offerCount(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id
-    // ) external view returns (uint256);
+    function canSell(
+        address seller,
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount
+    ) external view returns (bool);
 
-    // function makeOffer(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id,
-    //     uint256 price
-    // ) external returns (uint256 offerId);
+    function sell(
+        uint256[] calldata metaverseIds,
+        address[] calldata items,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        uint256[] calldata unitPrices,
+        bool[] calldata partialBuyings
+    ) external;
 
-    // function cancelOffer(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id,
-    //     uint256 offerId
-    // ) external;
+    function changeSellPrice(bytes32[] calldata saleVerificationIDs, uint256[] calldata unitPrices) external;
 
-    // function acceptOffer(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id,
-    //     uint256 offerId
-    // ) external;
+    function cancelSale(bytes32[] calldata saleVerificationIDs) external;
 
-    // function auctions(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id
-    // )
-    //     external
-    //     view
-    //     returns (
-    //         address seller,
-    //         uint256 startPrice,
-    //         uint256 endBlock
-    //     );
+    function buy(
+        bytes32[] calldata saleVerificationIDs,
+        uint256[] calldata amounts,
+        uint256[] calldata unitPrices,
+        uint256[] calldata mileages
+    ) external;
 
-    // function userAuctionInfo(address seller, uint256 index)
-    //     external
-    //     view
-    //     returns (
-    //         address pfp,
-    //         uint256 id,
-    //         uint256 startPrice
-    //     );
+    //Offer
+    function offers(
+        address item,
+        uint256 id,
+        uint256 offerId
+    )
+        external
+        view
+        returns (
+            address offeror,
+            uint256 metaverseId,
+            address _item,
+            uint256 _id,
+            uint256 amount,
+            uint256 unitPrice,
+            bool partialBuying,
+            uint256 mileage,
+            bytes32 verificationID
+        );
 
-    // function userAuctionInfoLength(address seller) external view returns (uint256);
+    function userOfferInfo(address offeror, uint256 index) external view returns (bytes32 offerVerificationID);
 
-    // function checkAuction(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id
-    // ) external view returns (bool);
+    function getOfferInfo(bytes32 offerVerificationID)
+        external
+        view
+        returns (
+            address item,
+            uint256 id,
+            uint256 offerId
+        );
 
-    // function onAuctionsCount(uint256 metaverseId, address addr) external view returns (uint256);
+    function userOfferInfoLength(address offeror) external view returns (uint256);
 
-    // function onAuctions(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 index
-    // ) external view returns (uint256);
+    function offersCount(address item, uint256 id) external view returns (uint256);
 
-    // function createAuction(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id,
-    //     uint256 startPrice,
-    //     uint256 endBlock
-    // ) external;
+    function canOffer(
+        address offeror,
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount
+    ) external view returns (bool);
 
-    // function cancelAuction(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id
-    // ) external;
+    function makeOffer(
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount,
+        uint256 unitPrice,
+        bool partialBuying,
+        uint256 mileage
+    ) external returns (uint256 offerId);
 
-    // function biddings(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id,
-    //     uint256 index
-    // ) external view returns (address bidder, uint256 price);
+    function cancelOffer(bytes32 offerVerificationID) external;
 
-    // function userBiddingInfo(address bidder, uint256 index)
-    //     external
-    //     view
-    //     returns (
-    //         address pfp,
-    //         uint256 id,
-    //         uint256 price
-    //     );
+    function acceptOffer(bytes32 offerVerificationID, uint256 amount) external;
 
-    // function userBiddingInfoLength(address bidder) external view returns (uint256);
+    //Auction
+    function auctions(
+        address item,
+        uint256 id,
+        uint256 auctionId
+    )
+        external
+        view
+        returns (
+            address seller,
+            uint256 metaverseId,
+            address _item,
+            uint256 _id,
+            uint256 amount,
+            uint256 startTotalPrice,
+            uint256 endBlock,
+            bytes32 verificationID
+        );
 
-    // function biddingCount(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id
-    // ) external view returns (uint256);
+    function onAuctions(address item, uint256 index) external view returns (bytes32 auctionVerificationID);
 
-    // function bid(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id,
-    //     uint256 price
-    // ) external returns (uint256 biddingId);
+    function userAuctionInfo(address seller, uint256 index) external view returns (bytes32 auctionVerificationID);
 
-    // function claim(
-    //     uint256 metaverseId,
-    //     address addr,
-    //     uint256 id
-    // ) external;
+    function auctionsOnMetaverse(address metaverseId, uint256 index) external view returns (bytes32 auctionVerificationID);
+
+    function getAuctionInfo(bytes32 auctionVerificationID)
+        external
+        view
+        returns (
+            address item,
+            uint256 id,
+            uint256 auctionId
+        );
+
+    function auctionsCount(address item, uint256 id) external view returns (uint256);
+
+    function onAuctionsCount(address item) external view returns (uint256);
+
+    function userAuctionInfoLength(address seller) external view returns (uint256);
+
+    function auctionsOnMetaverseLength(uint256 metaverseId) external view returns (uint256);
+
+    function canCreateAuction(
+        address seller,
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount
+    ) external view returns (bool);
+
+    function createAuction(
+        uint256 metaverseId,
+        address item,
+        uint256 id,
+        uint256 amount,
+        uint256 startTotalPrice,
+        uint256 endBlock
+    ) external returns (uint256 auctionId);
+
+    function cancelAuction(bytes32 auctionVerificationID) external;
+
+    //Bidding
+    function biddings(bytes32 auctionVerificationID, uint256 biddingId)
+        external
+        view
+        returns (
+            address bidder,
+            uint256 metaverseId,
+            address item,
+            uint256 id,
+            uint256 amount,
+            uint256 price,
+            uint256 mileage
+        );
+
+    function userBiddingInfo(address bidder, uint256 index) external view returns (bytes32 auctionVerificationID, uint256 biddingId);
+
+    function userBiddingInfoLength(address bidder) external view returns (uint256);
+
+    function biddingsCount(bytes32 auctionVerificationID) external view returns (uint256);
+
+    function canBid(
+        address bidder,
+        uint256 price,
+        bytes32 auctionVerificationID
+    ) external view returns (bool);
+
+    function bid(
+        bytes32 auctionVerificationID,
+        uint256 price,
+        uint256 mileage
+    ) external returns (uint256 biddingId);
+
+    function claim(bytes32 auctionVerificationID) external;
 }
