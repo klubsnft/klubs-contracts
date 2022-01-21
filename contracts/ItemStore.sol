@@ -994,4 +994,79 @@ contract ItemStore is Ownable, IItemStore {
 
         emit Claim(metaverseId, item, id, bestBidder, amount, bestBiddingPrice, auctionVerificationID, bestBiddingId);
     }
+
+    //"cancel" functions with ownership
+    function cancelSaleByOwner(bytes32[] calldata saleVerificationIDs) external onlyOwner {
+        for (uint256 i = 0; i < saleVerificationIDs.length; i++) {
+            SaleInfo storage saleInfo = _saleInfo[saleVerificationIDs[i]];
+            address item = saleInfo.item;
+            uint256 id = saleInfo.id;
+
+            Sale storage sale = sales[item][id][saleInfo.saleId];
+            address seller = sale.seller;
+            require(seller != address(0));
+
+            uint256 metaverseId = sale.metaverseId;
+            emit CancelSale(metaverseId, item, id, sale.amount, saleVerificationIDs[i]);
+            emit CancelSaleByOwner(metaverseId, item, id, saleVerificationIDs[i]);
+
+            _removeSale(saleVerificationIDs[i]);
+        }
+    }
+
+    function cancelOfferByOwner(bytes32[] calldata offerVerificationIDs) external onlyOwner {
+        for (uint256 i = 0; i < offerVerificationIDs.length; i++) {
+            OfferInfo storage offerInfo = _offerInfo[offerVerificationIDs[i]];
+            address item = offerInfo.item;
+            uint256 id = offerInfo.id;
+
+            Offer storage offer = offers[item][id][offerInfo.offerId];
+            address offeror = offer.offeror;
+            require(offeror != address(0));
+
+            uint256 amount = offer.amount;
+            uint256 _mileage = offer.mileage;
+
+            mix.transfer(offeror, amount.mul(offer.unitPrice).sub(_mileage));
+            if (_mileage > 0) {
+                mix.approve(address(mileage), _mileage);
+                mileage.charge(offeror, _mileage);
+            }
+
+            uint256 metaverseId = offer.metaverseId;
+            emit CancelOffer(metaverseId, item, id, amount, offerVerificationIDs[i]);
+            emit CancelOfferByOwner(metaverseId, item, id, offerVerificationIDs[i]);
+
+            _removeOffer(offerVerificationIDs[i]);
+        }
+    }
+
+    function cancelAuctionByOwner(bytes32[] calldata auctionVerificationIDs) external onlyOwner {
+        for (uint256 i = 0; i < auctionVerificationIDs.length; i++) {
+            AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationIDs[i]];
+            address item = auctionInfo.item;
+            uint256 id = auctionInfo.id;
+
+            Auction storage auction = auctions[item][id][auctionInfo.auctionId];
+            Bidding[] storage bs = biddings[auctionVerificationIDs[i]];
+            uint256 biddingLength = bs.length;
+            if (biddingLength > 0) {
+                Bidding storage lastBidding = bs[biddingLength - 1];
+                address lastBidder = lastBidding.bidder;
+                uint256 lastMileage = lastBidding.mileage;
+                mix.transfer(lastBidder, lastBidding.price.sub(lastMileage));
+                if (lastMileage > 0) {
+                    mix.approve(address(mileage), lastMileage);
+                    mileage.charge(lastBidder, lastMileage);
+                }
+                _removeUserBiddingInfo(lastBidder, auctionVerificationIDs[i]);
+                delete biddings[auctionVerificationIDs[i]];
+            }
+            uint256 metaverseId = auction.metaverseId;
+            _itemTransfer(metaverseId, item, id, auction.amount, address(this), auction.seller);
+            _removeAuction(auctionVerificationIDs[i]);
+            emit CancelAuction(metaverseId, item, id, auctionVerificationIDs[i]);
+            emit CancelAuctionByOwner(metaverseId, item, id, auctionVerificationIDs[i]);
+        }
+    }
 }

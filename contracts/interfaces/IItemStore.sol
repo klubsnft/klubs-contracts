@@ -100,9 +100,9 @@ interface IItemStore {
         uint256 biddingId
     );
 
-    event CancelSaleByOwner(uint256 indexed metaverseId, address indexed item, uint256 id);
-    event CancelOfferByOwner(uint256 indexed metaverseId, address indexed item, uint256 id, uint256 offerId);
-    event CancelAuctionByOwner(uint256 indexed metaverseId, address indexed item, uint256 id);
+    event CancelSaleByOwner(uint256 indexed metaverseId, address indexed item, uint256 id, bytes32 indexed saleVerificationID);
+    event CancelOfferByOwner(uint256 indexed metaverseId, address indexed item, uint256 id, bytes32 indexed offerVerificationID);
+    event CancelAuctionByOwner(uint256 indexed metaverseId, address indexed item, uint256 id, bytes32 indexed auctionVerificationID);
 
     event Ban(address indexed user);
     event Unban(address indexed user);
