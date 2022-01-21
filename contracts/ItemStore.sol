@@ -208,69 +208,58 @@ contract ItemStore is Ownable, IItemStore {
         delete _userOfferIndex[offerVerificationID];
     }
 
-    function _removeAuction(bytes32 hash, uint256 auctionId) private {
-        Auction memory auction = auctions[hash][auctionId];
+    function _removeAuction(bytes32 auctionVerificationID) private {
+        AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationID];
+        address item = auctionInfo.item;
+        uint256 id = auctionInfo.id;
+        uint256 auctionId = auctionInfo.auctionId;
+
+        Auction memory auction = auctions[item][id][auctionId];
 
         //delete auctions
-        uint256 lastAuctionId = auctions[hash].length.sub(1);
-        Auction memory lastAuction = auctions[hash][lastAuctionId];
+        uint256 lastAuctionId = auctions[item][id].length.sub(1);
+        Auction memory lastAuction = auctions[item][id][lastAuctionId];
         if (auctionId != lastAuctionId) {
-            auctions[hash][auctionId] = lastAuction;
-            emit ChangeAuctionId(
-                lastAuction.metaverseId,
-                lastAuction.item,
-                lastAuction.id,
-                lastAuction.seller,
-                lastAuction.amount,
-                lastAuction.startTotalPrice,
-                lastAuction.endBlock,
-                hash,
-                lastAuctionId,
-                auctionId
-            );
+            auctions[item][id][auctionId] = lastAuction;
+            _auctionInfo[lastAuction.verificationID].auctionId = auctionId;
         }
-        auctions[hash].length--;
+        auctions[item][id].length--;
+        delete _auctionInfo[auctionVerificationID];
 
         //delete onAuctions
-        uint256 lastIndex = onAuctions[lastAuction.item].length.sub(1);
-        uint256 index = _onAuctionsIndex[hash][lastAuctionId];
+        uint256 lastIndex = onAuctions[item].length.sub(1);
+        uint256 index = _onAuctionsIndex[auctionVerificationID];
         if (index != lastIndex) {
-            AuctionInfo memory lastAuctionInfo = onAuctions[lastAuction.item][lastIndex];
-            onAuctions[lastAuction.item][index] = lastAuctionInfo;
-            _onAuctionsIndex[lastAuctionInfo.hash][lastAuctionInfo.auctionId] = index;
+            bytes32 lastAuctionVerificationID = onAuctions[item][lastIndex];
+            onAuctions[item][index] = lastAuctionVerificationID;
+            _onAuctionsIndex[lastAuctionVerificationID] = index;
         }
-        onAuctions[lastAuction.item].length--;
-        delete _onAuctionsIndex[hash][lastAuctionId];
+        onAuctions[item].length--;
+        delete _onAuctionsIndex[auctionVerificationID];
 
         //delete userAuctionInfo
-        lastIndex = userAuctionInfo[auction.seller].length.sub(1);
-        index = _userAuctionIndex[hash][auctionId];
+        address seller = auction.seller;
+        lastIndex = userAuctionInfo[seller].length.sub(1);
+        index = _userAuctionIndex[auctionVerificationID];
         if (index != lastIndex) {
-            AuctionInfo memory lastAuctionInfo = userAuctionInfo[auction.seller][lastIndex];
-            userAuctionInfo[auction.seller][index] = lastAuctionInfo;
-            _userAuctionIndex[lastAuctionInfo.hash][lastAuctionInfo.auctionId] = index;
+            bytes32 lastAuctionVerificationID = userAuctionInfo[seller][lastIndex];
+            userAuctionInfo[seller][index] = lastAuctionVerificationID;
+            _userAuctionIndex[lastAuctionVerificationID] = index;
         }
-        userAuctionInfo[auction.seller].length--;
-
-        uint256 _lastAuctionUserIndex = _userAuctionIndex[hash][lastAuctionId];
-        userAuctionInfo[lastAuction.seller][_lastAuctionUserIndex].auctionId = auctionId;
-        _userAuctionIndex[hash][auctionId] = _lastAuctionUserIndex;
-        delete _userAuctionIndex[hash][lastAuctionId];
+        userAuctionInfo[seller].length--;
+        delete _userAuctionIndex[auctionVerificationID];
 
         //delete auctionsOnMetaverse
-        lastIndex = auctionsOnMetaverse[auction.metaverseId].length.sub(1);
-        index = _auctionsOnMvIndex[hash][auctionId];
+        uint256 metaverseId = auction.metaverseId;
+        lastIndex = auctionsOnMetaverse[metaverseId].length.sub(1);
+        index = _auctionsOnMvIndex[auctionVerificationID];
         if (index != lastIndex) {
-            AuctionInfo memory lastAuctionInfo = auctionsOnMetaverse[auction.metaverseId][lastIndex];
-            auctionsOnMetaverse[auction.metaverseId][index] = lastAuctionInfo;
-            _auctionsOnMvIndex[lastAuctionInfo.hash][lastAuctionInfo.auctionId] = index;
+            bytes32 lastAuctionVerificationID = auctionsOnMetaverse[metaverseId][lastIndex];
+            auctionsOnMetaverse[metaverseId][index] = lastAuctionVerificationID;
+            _auctionsOnMvIndex[lastAuctionVerificationID] = index;
         }
-        auctionsOnMetaverse[auction.metaverseId].length--;
-
-        uint256 _lastAuctionMvIndex = _auctionsOnMvIndex[hash][lastAuctionId];
-        auctionsOnMetaverse[lastAuction.metaverseId][_lastAuctionMvIndex].auctionId = auctionId;
-        _auctionsOnMvIndex[hash][auctionId] = _lastAuctionMvIndex;
-        delete _auctionsOnMvIndex[hash][lastAuctionId];
+        auctionsOnMetaverse[metaverseId].length--;
+        delete _auctionsOnMvIndex[auctionVerificationID];
     }
 
     function _distributeReward(
@@ -729,20 +718,37 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     struct AuctionInfo {
-        bytes32 hash;
+        address item;
+        uint256 id;
         uint256 auctionId;
     }
 
-    mapping(bytes32 => Auction[]) public auctions; //auctions[hash]. hash: item,id
+    mapping(address => mapping(uint256 => Auction[])) public auctions; //auctions[item][id].
+    mapping(bytes32 => AuctionInfo) internal _auctionInfo; //_auctionInfo[auctionVerificationID].
 
-    mapping(address => AuctionInfo[]) public onAuctions; //onAuctions[item]. 아이템 계약 중 onAuction 중인 정보들.
-    mapping(bytes32 => mapping(uint256 => uint256)) private _onAuctionsIndex; //_onAuctionsIndex[auctionHash][auctionId]. 특정 옥션의 onAuctions index.
+    mapping(address => bytes32[]) public onAuctions; //onAuctions[item]. 아이템 계약 중 onAuction 중인 정보들. "return saleVerificationID."
+    mapping(bytes32 => uint256) private _onAuctionsIndex; //_onAuctionsIndex[auctionHash][auctionId]. 특정 옥션의 onAuctions index.
 
-    mapping(address => AuctionInfo[]) public userAuctionInfo; //userAuctionInfo[seller] 셀러의 옥션들 정보.
-    mapping(bytes32 => mapping(uint256 => uint256)) private _userAuctionIndex; //_userAuctionIndex[auctionHash][auctionId]. 특정 옥션의 userAuctionInfo index.
+    mapping(address => bytes32[]) public userAuctionInfo; //userAuctionInfo[seller] 셀러의 옥션들 정보. "return saleVerificationID."
+    mapping(bytes32 => uint256) private _userAuctionIndex; //_userAuctionIndex[auctionHash][auctionId]. 특정 옥션의 userAuctionInfo index.
 
-    mapping(uint256 => AuctionInfo[]) public auctionsOnMetaverse; //auctionsOnMetaverse[metaverseId]. 특정 메타버스의 모든 옥션들.
-    mapping(bytes32 => mapping(uint256 => uint256)) private _auctionsOnMvIndex; //_auctionsOnMvIndex[auctionHash][auctionId]. 특정 옥션의 auctionsOnMetaverse index.
+    mapping(uint256 => bytes32[]) public auctionsOnMetaverse; //auctionsOnMetaverse[metaverseId]. 특정 메타버스의 모든 옥션들. "return saleVerificationID."
+    mapping(bytes32 => uint256) private _auctionsOnMvIndex; //_auctionsOnMvIndex[auctionHash][auctionId]. 특정 옥션의 auctionsOnMetaverse index.
+
+    function getAuctionInfo(bytes32 auctionVerificationID)
+        external
+        view
+        returns (
+            address item,
+            uint256 id,
+            uint256 auctionId
+        )
+    {
+        AuctionInfo memory auctionInfo = _auctionInfo[auctionVerificationID];
+        require(auctionInfo.item != address(0));
+
+        return (auctionInfo.item, auctionInfo.id, auctionInfo.auctionId);
+    }
 
     function onAuctionsCount(address item) external view returns (uint256) {
         return onAuctions[item].length;
@@ -792,9 +798,10 @@ contract ItemStore is Ownable, IItemStore {
             abi.encodePacked(msg.sender, metaverseId, item, id, amount, startTotalPrice, endBlock, nonce[msg.sender]++)
         );
 
-        bytes32 hash = keccak256(abi.encodePacked(item, id));
-        auctionId = auctions[hash].length;
-        auctions[hash].push(
+        require(_auctionInfo[verificationID].item == address(0));
+
+        auctionId = auctions[item][id].length;
+        auctions[item][id].push(
             Auction({
                 seller: msg.sender,
                 metaverseId: metaverseId,
@@ -807,37 +814,34 @@ contract ItemStore is Ownable, IItemStore {
             })
         );
 
-        AuctionInfo memory _info = AuctionInfo({hash: hash, auctionId: auctionId});
+        _auctionInfo[verificationID] = AuctionInfo({item: item, id: id, auctionId: auctionId});
 
-        _onAuctionsIndex[hash][auctionId] = onAuctions[item].length;
-        onAuctions[item].push(_info);
+        _onAuctionsIndex[verificationID] = onAuctions[item].length;
+        onAuctions[item].push(verificationID);
 
-        _userAuctionIndex[hash][auctionId] = userAuctionInfo[msg.sender].length;
-        userAuctionInfo[msg.sender].push(_info);
+        _userAuctionIndex[verificationID] = userAuctionInfo[msg.sender].length;
+        userAuctionInfo[msg.sender].push(verificationID);
 
-        _auctionsOnMvIndex[hash][auctionId] = auctionsOnMetaverse[metaverseId].length;
-        auctionsOnMetaverse[metaverseId].push(_info);
+        _auctionsOnMvIndex[verificationID] = auctionsOnMetaverse[metaverseId].length;
+        auctionsOnMetaverse[metaverseId].push(verificationID);
 
         _itemTransfer(metaverseId, item, id, amount, msg.sender, address(this));
 
-        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startTotalPrice, endBlock, hash, auctionId, verificationID);
+        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startTotalPrice, endBlock, verificationID);
     }
 
-    function cancelAuction(
-        bytes32 hash,
-        uint256 auctionId,
-        bytes32 _verificationID
-    ) external {
-        require(biddings[hash][_verificationID].length == 0);
-        Auction memory auction = auctions[hash][auctionId];
-        require(auction.seller == msg.sender);
-        require(auction.verificationID == _verificationID);
+    function cancelAuction(bytes32 auctionVerificationID) external {
+        // require(biddings[auctionVerificationID].length == 0);
+        AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationID];
+        Auction memory auction = auctions[auctionInfo.item][auctionInfo.id][auctionInfo.auctionId];
 
-        _removeAuction(hash, auctionId);
+        require(auction.seller == msg.sender);
+
+        _removeAuction(auctionVerificationID);
 
         _itemTransfer(auction.metaverseId, auction.item, auction.id, auction.amount, address(this), msg.sender);
 
-        emit CancelAuction(auction.metaverseId, auction.item, auction.id, auction.seller, auction.amount, auction.startTotalPrice, hash, auctionId);
+        emit CancelAuction(auction.metaverseId, auction.item, auction.id, auctionVerificationID);
     }
 
     //Bidding
@@ -849,44 +853,42 @@ contract ItemStore is Ownable, IItemStore {
         uint256 amount;
         uint256 price;
         uint256 mileage;
-        bytes32 verificationID;
     }
 
     struct BiddingInfo {
-        bytes32 hash;
         bytes32 auctionVerificationID;
-        uint256 biddingIndex;
-        bytes32 biddingVerificationID;
+        uint256 biddingId;
     }
 
-    mapping(bytes32 => mapping(bytes32 => Bidding[])) public biddings; //biddings[hash][auction_verificationID]. hash: item,id
+    mapping(bytes32 => Bidding[]) public biddings; //biddings[auctionVerificationID].
 
-    mapping(address => BiddingInfo[]) public userBiddingInfo; //userBiddingInfo[bidder] 비더의 비딩들 정보.
-    mapping(bytes32 => mapping(bytes32 => uint256)) private _userBiddingIndex; //_userBiddingIndex[hash][bidding_verificationID]. 특정 비딩의 userBiddingInfo index.
+    mapping(address => BiddingInfo[]) public userBiddingInfo; //userBiddingInfo[bidder] 비더의 비딩들 정보.   "return saleVerificationID."
+    mapping(address => mapping(bytes32 => uint256)) private _userBiddingIndex; //_userBiddingIndex[bidder][auctionVerificationID]. 특정 비딩의 userBiddingInfo index.
 
     function userBiddingInfoLength(address bidder) external view returns (uint256) {
         return userBiddingInfo[bidder].length;
     }
 
-    function biddingCount(bytes32 hash, bytes32 verificationID) external view returns (uint256) {
-        return biddings[hash][verificationID].length;
+    function biddingCount(bytes32 auctionVerificationID) external view returns (uint256) {
+        return biddings[auctionVerificationID].length;
     }
 
     function canBid(
         address bidder,
         uint256 price,
-        bytes32 auctionHash,
-        uint256 auctionId,
         bytes32 auctionVerificationID
     ) public view returns (bool) {
-        Auction memory auction = auctions[auctionHash][auctionId];
+        AuctionInfo memory auctionInfo = _auctionInfo[auctionVerificationID];
+        if (auctionInfo.item == address(0)) return false;
+
+        Auction memory auction = auctions[auctionInfo.item][auctionInfo.id][auctionInfo.auctionId];
+
         if (!isItemWhitelisted(auction.metaverseId, auction.item)) return false;
 
-        if (auction.verificationID != auctionVerificationID) return false;
         if (auction.seller == address(0) || auction.seller == bidder) return false;
         if (auction.endBlock <= block.number) return false;
 
-        Bidding[] storage bs = biddings[auctionHash][auctionVerificationID];
+        Bidding[] storage bs = biddings[auctionVerificationID];
         uint256 biddingLength = bs.length;
         if (biddingLength == 0) {
             if (auction.startTotalPrice > price) return false;
@@ -898,19 +900,19 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     function bid(
-        bytes32 auctionHash,
-        uint256 auctionId,
         bytes32 auctionVerificationID,
         uint256 price,
         uint256 _mileage
     ) external userWhitelist(msg.sender) returns (uint256 biddingId) {
-        require(canBid(msg.sender, price, auctionHash, auctionId, auctionVerificationID));
-        Auction memory auction = auctions[auctionHash][auctionId];
+        require(canBid(msg.sender, price, auctionVerificationID));
+        AuctionInfo memory auctionInfo = _auctionInfo[auctionVerificationID];
 
-        require(auction.metaverseId < metaverses.metaverseCount() && !metaverses.banned(auction.metaverseId));
-        require(metaverses.itemAdded(auction.metaverseId, auction.item));
+        Auction storage auction = auctions[auctionInfo.item][auctionInfo.id][auctionInfo.auctionId];
 
-        Bidding[] storage bs = biddings[auctionHash][auctionVerificationID];
+        uint256 metaverseId = auction.metaverseId;
+        uint256 amount = auction.amount;
+
+        Bidding[] storage bs = biddings[auctionVerificationID];
         biddingId = bs.length;
         if (biddingId > 0) {
             Bidding storage bestBidding = bs[biddingId - 1];
@@ -921,103 +923,75 @@ contract ItemStore is Ownable, IItemStore {
                 mix.approve(address(mileage), lastMileage);
                 mileage.charge(lastBidder, lastMileage);
             }
-            _removeUserBiddingInfo(lastBidder, auctionHash, bestBidding.verificationID);
+            _removeUserBiddingInfo(lastBidder, auctionVerificationID);
         }
-
-        bytes32 biddingVerificationID = keccak256(
-            abi.encodePacked(msg.sender, auction.metaverseId, auction.item, auction.id, auction.amount, price, _mileage, nonce[msg.sender]++)
-        );
 
         bs.push(
             Bidding({
                 bidder: msg.sender,
-                metaverseId: auction.metaverseId,
-                item: auction.item,
-                id: auction.id,
-                amount: auction.amount,
+                metaverseId: metaverseId,
+                item: auctionInfo.item,
+                id: auctionInfo.id,
+                amount: amount,
                 price: price,
-                mileage: _mileage,
-                verificationID: biddingVerificationID
+                mileage: _mileage
             })
         );
 
-        _userBiddingIndex[auctionHash][biddingVerificationID] = userBiddingInfo[msg.sender].length;
-        userBiddingInfo[msg.sender].push(
-            BiddingInfo({
-                hash: auctionHash,
-                auctionVerificationID: auctionVerificationID,
-                biddingIndex: biddingId,
-                biddingVerificationID: biddingVerificationID
-            })
-        );
+        _userBiddingIndex[msg.sender][auctionVerificationID] = userBiddingInfo[msg.sender].length;
+        userBiddingInfo[msg.sender].push(BiddingInfo({auctionVerificationID: auctionVerificationID, biddingId: biddingId}));
 
         mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
         if (_mileage > 0) mileage.use(msg.sender, _mileage);
-
-        if (block.number >= auction.endBlock.sub(auctionExtensionInterval)) {
-            auctions[auctionHash][auctionId].endBlock = auction.endBlock.add(auctionExtensionInterval);
+        {
+            //to avoid stack too deep error
+            uint256 endBlock = auction.endBlock;
+            if (block.number >= endBlock.sub(auctionExtensionInterval)) {
+                auction.endBlock = endBlock.add(auctionExtensionInterval);
+            }
         }
-
-        emit Bid(
-            auction.metaverseId,
-            auction.item,
-            auction.id,
-            msg.sender,
-            auction.amount,
-            price,
-            auctionHash,
-            auctionId,
-            auctionVerificationID,
-            biddingVerificationID
-        );
+        emit Bid(metaverseId, auctionInfo.item, auctionInfo.id, msg.sender, amount, price, auctionVerificationID, biddingId);
     }
 
-    function _removeUserBiddingInfo(
-        address bidder,
-        bytes32 hash,
-        bytes32 biddingVerificationID
-    ) private {
+    function _removeUserBiddingInfo(address bidder, bytes32 auctionVerificationID) private {
         uint256 lastIndex = userBiddingInfo[bidder].length.sub(1);
-        uint256 index = _userBiddingIndex[hash][biddingVerificationID];
+        uint256 index = _userBiddingIndex[bidder][auctionVerificationID];
 
         if (index != lastIndex) {
             BiddingInfo memory lastBiddingInfo = userBiddingInfo[bidder][lastIndex];
             userBiddingInfo[bidder][index] = lastBiddingInfo;
-            _userBiddingIndex[lastBiddingInfo.hash][lastBiddingInfo.biddingVerificationID] = index;
+            _userBiddingIndex[bidder][lastBiddingInfo.auctionVerificationID] = index;
         }
-        delete _userBiddingIndex[hash][biddingVerificationID];
+        delete _userBiddingIndex[bidder][auctionVerificationID];
         userBiddingInfo[bidder].length--;
     }
 
-    function claim(
-        bytes32 auctionHash,
-        uint256 auctionId,
-        bytes32 auctionVerificationID
-    ) external {
-        Auction memory auction = auctions[auctionHash][auctionId];
-        Bidding[] storage bs = biddings[auctionHash][auctionVerificationID];
-        Bidding memory bidding = bs[bs.length.sub(1)];
+    function claim(bytes32 auctionVerificationID) external {
+        AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationID];
+
+        Auction memory auction = auctions[auctionInfo.item][auctionInfo.id][auctionInfo.auctionId];
+
+        uint256 metaverseId = auction.metaverseId;
+        address item = auction.item;
+        uint256 id = auction.id;
+        uint256 amount = auction.amount;
+
+        Bidding[] storage bs = biddings[auctionVerificationID];
+        uint256 bestBiddingId = bs.length.sub(1);
+        Bidding memory bestBidding = bs[bestBiddingId];
+
+        address bestBidder = bestBidding.bidder;
+        uint256 bestBiddingPrice = bestBidding.price;
 
         require(block.number >= auction.endBlock);
 
-        _itemTransfer(auction.metaverseId, auction.item, auction.id, auction.amount, address(this), bidding.bidder);
-        _distributeReward(auction.metaverseId, bidding.bidder, auction.seller, bidding.price);
+        _itemTransfer(metaverseId, item, id, amount, address(this), bestBidder);
+        _distributeReward(metaverseId, bestBidder, auction.seller, bestBiddingPrice);
 
-        _removeAuction(auctionHash, auctionId);
-        _removeUserBiddingInfo(bidding.bidder, auctionHash, bidding.verificationID);
-        delete biddings[auctionHash][auctionVerificationID];
+        _removeAuction(auctionVerificationID);
+        _removeUserBiddingInfo(bestBidder, auctionVerificationID);
+        delete biddings[auctionVerificationID];
 
-        emit Claim(
-            auction.metaverseId,
-            auction.item,
-            auction.id,
-            bidding.bidder,
-            auction.amount,
-            bidding.price,
-            auctionHash,
-            auctionId,
-            auctionVerificationID,
-            bidding.verificationID
-        );
+        emit Claim(metaverseId, item, id, bestBidder, amount, bestBiddingPrice, auctionVerificationID, bestBiddingId);
     }
 }

@@ -9,14 +9,14 @@ interface IItemStore {
         uint256 amount,
         uint256 unitPrice,
         bool partialBuying,
-        bytes32 indexed verificationID
+        bytes32 indexed saleVerificationID
     );
     event ChangeSellPrice(
         uint256 indexed metaverseId,
         address indexed item,
         uint256 id,
         uint256 newUnitPrice,
-        bytes32 indexed verificationID
+        bytes32 indexed saleVerificationID
     );
     event Buy(
         uint256 indexed metaverseId,
@@ -25,14 +25,14 @@ interface IItemStore {
         address buyer,
         uint256 amount,
         bool isFulfilled,
-        bytes32 indexed verificationID
+        bytes32 indexed saleVerificationID
     );
     event CancelSale(
         uint256 indexed metaverseId,
         address indexed item,
         uint256 id,
         uint256 amount,
-        bytes32 indexed verificationID
+        bytes32 indexed saleVerificationID
     );
 
     event MakeOffer(
@@ -43,14 +43,14 @@ interface IItemStore {
         uint256 amount,
         uint256 unitPrice,
         bool partialBuying,
-        bytes32 indexed verificationID
+        bytes32 indexed offerVerificationID
     );
     event CancelOffer(
         uint256 indexed metaverseId,
         address indexed item,
         uint256 id,
         uint256 amount,
-        bytes32 indexed verificationID
+        bytes32 indexed offerVerificationID
     );
     event AcceptOffer(
         uint256 indexed metaverseId,
@@ -59,7 +59,7 @@ interface IItemStore {
         address acceptor,
         uint256 amount,
         bool isFulfilled,
-        bytes32 indexed verificationID
+        bytes32 indexed offerVerificationID
     );
 
     event CreateAuction(
@@ -70,32 +70,15 @@ interface IItemStore {
         uint256 amount,
         uint256 startPrice,
         uint256 endBlock,
-        bytes32 indexed hash,
-        uint256 auctionId,
-        bytes32 verificationID
+        bytes32 indexed auctionVerificationID
     );
     event CancelAuction(
         uint256 indexed metaverseId,
         address indexed item,
         uint256 id,
-        address seller,
-        uint256 amount,
-        uint256 startPrice,
-        bytes32 indexed hash,
-        uint256 auctionId
+        bytes32 indexed auctionVerificationID
     );
-    event ChangeAuctionId(
-        uint256 indexed metaverseId,
-        address indexed item,
-        uint256 id,
-        address seller,
-        uint256 amount,
-        uint256 startPrice,
-        uint256 endBlock,
-        bytes32 indexed hash,
-        uint256 oldAuctionId,
-        uint256 newAuctionId
-    );
+
     event Bid(
         uint256 indexed metaverseId,
         address indexed item,
@@ -103,10 +86,8 @@ interface IItemStore {
         address bidder,
         uint256 amount,
         uint256 price,
-        bytes32 indexed auctionHash,
-        uint256 auctionId,
-        bytes32 auctionVerificationID,
-        bytes32 biddingVerificationID
+        bytes32 indexed auctionVerificationID,
+        uint256 biddingId
     );
     event Claim(
         uint256 indexed metaverseId,
@@ -115,10 +96,8 @@ interface IItemStore {
         address bestBidder,
         uint256 amount,
         uint256 price,
-        bytes32 indexed auctionHash,
-        uint256 auctionId,
-        bytes32 auctionVerificationID,
-        bytes32 biddingVerificationID
+        bytes32 indexed auctionVerificationID,
+        uint256 biddingId
     );
 
     event CancelSaleByOwner(uint256 indexed metaverseId, address indexed item, uint256 id);
