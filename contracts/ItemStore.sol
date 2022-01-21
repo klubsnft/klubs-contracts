@@ -123,7 +123,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id = saleInfo.id;
         uint256 saleId = saleInfo.saleId;
 
-        Sale memory sale = sales[item][id][saleId];
+        Sale storage sale = sales[item][id][saleId];
 
         //delete sales
         uint256 lastSaleId = sales[item][id].length.sub(1);
@@ -171,8 +171,9 @@ contract ItemStore is Ownable, IItemStore {
         delete _salesOnMvIndex[saleVerificationID];
 
         //subtract amounts.
-        if (sale.amount > 0) {
-            userOnSaleAmounts[seller][item][id] = userOnSaleAmounts[seller][item][id].sub(sale.amount);
+        uint256 amount = sale.amount;
+        if (amount > 0) {
+            userOnSaleAmounts[seller][item][id] = userOnSaleAmounts[seller][item][id].sub(amount);
         }
     }
 
@@ -182,7 +183,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id = offerInfo.id;
         uint256 offerId = offerInfo.offerId;
 
-        Offer memory offer = offers[item][id][offerId];
+        Offer storage offer = offers[item][id][offerId];
 
         //delete offers
         uint256 lastOfferId = offers[item][id].length.sub(1);
@@ -213,7 +214,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id = auctionInfo.id;
         uint256 auctionId = auctionInfo.auctionId;
 
-        Auction memory auction = auctions[item][id][auctionId];
+        Auction storage auction = auctions[item][id][auctionId];
 
         //delete auctions
         uint256 lastAuctionId = auctions[item][id].length.sub(1);
