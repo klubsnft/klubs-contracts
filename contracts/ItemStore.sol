@@ -375,6 +375,10 @@ contract ItemStore is Ownable, IItemStore {
         return (saleInfo.item, saleInfo.id, saleInfo.saleId);
     }
 
+    function salesCount(address item, uint256 id) external view returns (uint256) {
+        return sales[item][id].length;
+    }
+
     function onSalesCount(address item) external view returns (uint256) {
         return onSales[item].length;
     }
@@ -596,7 +600,7 @@ contract ItemStore is Ownable, IItemStore {
         return userOfferInfo[offeror].length;
     }
 
-    function offerCount(address item, uint256 id) external view returns (uint256) {
+    function offersCount(address item, uint256 id) external view returns (uint256) {
         return offers[item][id].length;
     }
 
@@ -763,6 +767,10 @@ contract ItemStore is Ownable, IItemStore {
         return (auctionInfo.item, auctionInfo.id, auctionInfo.auctionId);
     }
 
+    function auctionsCount(address item, uint256 id) external view returns (uint256) {
+        return auctions[item][id].length;
+    }
+
     function onAuctionsCount(address item) external view returns (uint256) {
         return onAuctions[item].length;
     }
@@ -885,7 +893,7 @@ contract ItemStore is Ownable, IItemStore {
         return userBiddingInfo[bidder].length;
     }
 
-    function biddingCount(bytes32 auctionVerificationID) external view returns (uint256) {
+    function biddingsCount(bytes32 auctionVerificationID) external view returns (uint256) {
         return biddings[auctionVerificationID].length;
     }
 
