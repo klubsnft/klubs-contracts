@@ -117,6 +117,7 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
+    //use verificationID as a parameter in "_removeXXXX" functions for safety despite a waste of gas
     function _removeSale(bytes32 saleVerificationID) private {
         SaleInfo storage saleInfo = _saleInfo[saleVerificationID];
         address item = saleInfo.item;
@@ -357,8 +358,6 @@ contract ItemStore is Ownable, IItemStore {
     mapping(bytes32 => uint256) private _salesOnMvIndex; //_salesOnMvIndex[saleVerificationID]. 특정 세일의 salesOnMetaverse index.
 
     mapping(address => mapping(address => mapping(uint256 => uint256))) public userOnSaleAmounts; //userOnSaleAmounts[seller][item][id]. 셀러가 판매중인 특정 id의 아이템의 총 합.
-
-    //TODO 한번에 모든 배열이 불러와지지 않는 경우 대비.
 
     function getSaleInfo(bytes32 saleVerificationID)
         external
