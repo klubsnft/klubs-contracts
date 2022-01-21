@@ -118,56 +118,62 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     function _removeSale(bytes32 saleVerificationID) private {
-        SaleInfo memory saleInfo = _saleInfo[saleVerificationID];
-        Sale memory sale = sales[saleInfo.hash][saleInfo.saleId];
+        SaleInfo storage saleInfo = _saleInfo[saleVerificationID];
+        address item = saleInfo.item;
+        uint256 id = saleInfo.id;
+        uint256 saleId = saleInfo.saleId;
+
+        Sale memory sale = sales[item][id][saleId];
         // require(sale.seller != address(0));
 
         //delete sales
-        uint256 lastSaleId = sales[saleInfo.hash].length.sub(1);
-        Sale memory lastSale = sales[saleInfo.hash][lastSaleId];
-        if (saleInfo.saleId != lastSaleId) {
-            sales[saleInfo.hash][saleInfo.saleId] = lastSale;
-            _saleInfo[lastSale.verificationID].saleId = saleInfo.saleId;
+        uint256 lastSaleId = sales[item][id].length.sub(1);
+        Sale memory lastSale = sales[item][id][lastSaleId];
+        if (saleId != lastSaleId) {
+            sales[item][id][saleId] = lastSale;
+            _saleInfo[lastSale.verificationID].saleId = saleId;
         }
-        sales[saleInfo.hash].length--;
+        sales[item][id].length--;
         delete _saleInfo[saleVerificationID];
 
         //delete onSales
-        uint256 lastIndex = onSales[sale.item].length.sub(1);
+        uint256 lastIndex = onSales[item].length.sub(1);
         uint256 index = _onSalesIndex[saleVerificationID];
         if (index != lastIndex) {
-            bytes32 lastSaleVerificationID = onSales[sale.item][lastIndex];
-            onSales[sale.item][index] = lastSaleVerificationID;
+            bytes32 lastSaleVerificationID = onSales[item][lastIndex];
+            onSales[item][index] = lastSaleVerificationID;
             _onSalesIndex[lastSaleVerificationID] = index;
         }
-        onSales[sale.item].length--;
+        onSales[item].length--;
         delete _onSalesIndex[saleVerificationID];
 
         //delete userSellInfo
-        lastIndex = userSellInfo[sale.seller].length.sub(1);
+        address seller = sale.seller;
+        lastIndex = userSellInfo[seller].length.sub(1);
         index = _userSellIndex[saleVerificationID];
         if (index != lastIndex) {
-            bytes32 lastSaleVerificationID = userSellInfo[sale.seller][lastIndex];
-            userSellInfo[sale.seller][index] = lastSaleVerificationID;
+            bytes32 lastSaleVerificationID = userSellInfo[seller][lastIndex];
+            userSellInfo[seller][index] = lastSaleVerificationID;
             _userSellIndex[lastSaleVerificationID] = index;
         }
-        userSellInfo[sale.seller].length--;
+        userSellInfo[seller].length--;
         delete _userSellIndex[saleVerificationID];
 
         //delete salesOnMetaverse
-        lastIndex = salesOnMetaverse[sale.metaverseId].length.sub(1);
+        uint256 metaverseId = sale.metaverseId;
+        lastIndex = salesOnMetaverse[metaverseId].length.sub(1);
         index = _salesOnMvIndex[saleVerificationID];
         if (index != lastIndex) {
-            bytes32 lastSaleVerificationID = salesOnMetaverse[sale.metaverseId][lastIndex];
-            salesOnMetaverse[sale.metaverseId][index] = lastSaleVerificationID;
+            bytes32 lastSaleVerificationID = salesOnMetaverse[metaverseId][lastIndex];
+            salesOnMetaverse[metaverseId][index] = lastSaleVerificationID;
             _salesOnMvIndex[lastSaleVerificationID] = index;
         }
-        salesOnMetaverse[sale.metaverseId].length--;
+        salesOnMetaverse[metaverseId].length--;
         delete _salesOnMvIndex[saleVerificationID];
 
         //subtract amounts.
         if (sale.amount > 0) {
-            userOnSaleAmounts[sale.seller][sale.item][sale.id] = userOnSaleAmounts[sale.seller][sale.item][sale.id].sub(sale.amount);
+            userOnSaleAmounts[seller][item][id] = userOnSaleAmounts[seller][item][id].sub(sale.amount);
         }
     }
 
@@ -352,11 +358,12 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     struct SaleInfo {
-        bytes32 hash;
+        address item;
+        uint256 id;
         uint256 saleId;
     }
 
-    mapping(bytes32 => Sale[]) public sales; //sales[hash]. hash: item,id
+    mapping(address => mapping(uint256 => Sale[])) public sales; //sales[item][id].
     mapping(bytes32 => SaleInfo) internal _saleInfo; //_saleInfo[saleVerificationID].
 
     mapping(address => bytes32[]) public onSales; //onSales[item]. 아이템 계약 중 onSale 중인 정보들. "return saleVerificationID."
@@ -372,11 +379,19 @@ contract ItemStore is Ownable, IItemStore {
 
     //TODO 한번에 모든 배열이 불러와지지 않는 경우 대비.
 
-    function getSaleInfo(bytes32 saleVerificationID) external view returns (bytes32 hash, uint256 saleId) {
+    function getSaleInfo(bytes32 saleVerificationID)
+        external
+        view
+        returns (
+            address item,
+            uint256 id,
+            uint256 saleId
+        )
+    {
         SaleInfo memory saleInfo = _saleInfo[saleVerificationID];
-        require(saleInfo.hash != 0);
+        require(saleInfo.item != address(0));
 
-        return (saleInfo.hash, saleInfo.saleId);
+        return (saleInfo.item, saleInfo.id, saleInfo.saleId);
     }
 
     function onSalesCount(address item) external view returns (uint256) {
@@ -413,13 +428,13 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     function sell(
-        uint256[] memory metaverseIds,
-        address[] memory items,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        uint256[] memory unitPrices,
-        bool[] memory partialBuyings
-    ) public userWhitelist(msg.sender) {
+        uint256[] calldata metaverseIds,
+        address[] calldata items,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        uint256[] calldata unitPrices,
+        bool[] calldata partialBuyings
+    ) external userWhitelist(msg.sender) {
         require(
             metaverseIds.length == items.length &&
                 metaverseIds.length == ids.length &&
@@ -429,36 +444,39 @@ contract ItemStore is Ownable, IItemStore {
         );
         for (uint256 i = 0; i < metaverseIds.length; i++) {
             uint256 metaverseId = metaverseIds[i];
+            address item = items[i];
+            uint256 id = ids[i];
+            uint256 amount = amounts[i];
+            uint256 unitPrice = unitPrices[i];
+            bool partialBuying = partialBuyings[i];
 
-            require(unitPrices[i] > 0);
-            require(canSell(msg.sender, metaverseId, items[i], ids[i], amounts[i]));
+            require(unitPrice > 0);
+            require(canSell(msg.sender, metaverseId, item, id, amount));
 
             bytes32 verificationID = keccak256(
-                abi.encodePacked(msg.sender, metaverseId, items[i], ids[i], amounts[i], unitPrices[i], partialBuyings[i], nonce[msg.sender]++)
+                abi.encodePacked(msg.sender, metaverseId, item, id, amount, unitPrice, partialBuying, nonce[msg.sender]++)
             );
 
-            require(_saleInfo[verificationID].hash == 0);
+            require(_saleInfo[verificationID].item == address(0));
 
-            bytes32 hash = keccak256(abi.encodePacked(items[i], ids[i]));
-            uint256 saleId = sales[hash].length;
-
-            sales[hash].push(
+            uint256 saleId = sales[item][id].length;
+            sales[item][id].push(
                 Sale({
                     seller: msg.sender,
                     metaverseId: metaverseId,
-                    item: items[i],
-                    id: ids[i],
-                    amount: amounts[i],
-                    unitPrice: unitPrices[i],
-                    partialBuying: partialBuyings[i],
+                    item: item,
+                    id: id,
+                    amount: amount,
+                    unitPrice: unitPrice,
+                    partialBuying: partialBuying,
                     verificationID: verificationID
                 })
             );
 
-            _saleInfo[verificationID] = SaleInfo({hash: hash, saleId: saleId});
+            _saleInfo[verificationID] = SaleInfo({item: item, id: id, saleId: saleId});
 
-            _onSalesIndex[verificationID] = onSales[items[i]].length;
-            onSales[items[i]].push(verificationID);
+            _onSalesIndex[verificationID] = onSales[item].length;
+            onSales[item].push(verificationID);
 
             _userSellIndex[verificationID] = userSellInfo[msg.sender].length;
             userSellInfo[msg.sender].push(verificationID);
@@ -466,17 +484,17 @@ contract ItemStore is Ownable, IItemStore {
             _salesOnMvIndex[verificationID] = salesOnMetaverse[metaverseId].length;
             salesOnMetaverse[metaverseId].push(verificationID);
 
-            userOnSaleAmounts[msg.sender][items[i]][ids[i]] = userOnSaleAmounts[msg.sender][items[i]][ids[i]].add(amounts[i]);
+            userOnSaleAmounts[msg.sender][item][id] = userOnSaleAmounts[msg.sender][item][id].add(amount);
 
-            emit Sell(metaverseId, items[i], ids[i], msg.sender, amounts[i], unitPrices[i], partialBuyings[i], verificationID);
+            emit Sell(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, verificationID);
         }
     }
 
     function changeSellPrice(bytes32[] calldata saleVerificationIDs, uint256[] calldata unitPrices) external userWhitelist(msg.sender) {
         require(saleVerificationIDs.length == unitPrices.length);
         for (uint256 i = 0; i < saleVerificationIDs.length; i++) {
-            SaleInfo memory saleInfo = _saleInfo[saleVerificationIDs[i]];
-            Sale storage sale = sales[saleInfo.hash][saleInfo.saleId];
+            SaleInfo storage saleInfo = _saleInfo[saleVerificationIDs[i]];
+            Sale storage sale = sales[saleInfo.item][saleInfo.id][saleInfo.saleId];
             require(sale.seller == msg.sender);
             require(sale.unitPrice != unitPrices[i]);
 
@@ -487,8 +505,8 @@ contract ItemStore is Ownable, IItemStore {
 
     function cancelSale(bytes32[] calldata saleVerificationIDs) external {
         for (uint256 i = 0; i < saleVerificationIDs.length; i++) {
-            SaleInfo memory saleInfo = _saleInfo[saleVerificationIDs[i]];
-            Sale memory sale = sales[saleInfo.hash][saleInfo.saleId];
+            SaleInfo storage saleInfo = _saleInfo[saleVerificationIDs[i]];
+            Sale storage sale = sales[saleInfo.item][saleInfo.id][saleInfo.saleId];
             require(sale.seller == msg.sender);
 
             _removeSale(saleVerificationIDs[i]);
@@ -504,42 +522,45 @@ contract ItemStore is Ownable, IItemStore {
     ) external userWhitelist(msg.sender) {
         require(amounts.length == saleVerificationIDs.length && amounts.length == unitPrices.length && amounts.length == mileages.length);
         for (uint256 i = 0; i < amounts.length; i++) {
-            SaleInfo memory saleInfo = _saleInfo[saleVerificationIDs[i]];
-            Sale memory sale = sales[saleInfo.hash][saleInfo.saleId];
+            bytes32 saleVerificationID = saleVerificationIDs[i];
+            SaleInfo memory saleInfo = _saleInfo[saleVerificationID];
+            Sale storage sale = sales[saleInfo.item][saleInfo.id][saleInfo.saleId];
 
-            require(isItemWhitelisted(sale.metaverseId, sale.item));
-            require(sale.seller != address(0) && sale.seller != msg.sender);
+            address seller = sale.seller;
+            uint256 metaverseId = sale.metaverseId;
+
+            require(isItemWhitelisted(metaverseId, saleInfo.item));
+            require(seller != address(0) && seller != msg.sender);
             require(sale.unitPrice == unitPrices[i]);
 
             uint256 amount = amounts[i];
-
+            uint256 saleAmount = sale.amount;
             if (!sale.partialBuying) {
-                require(sale.amount == amount);
+                require(saleAmount == amount);
             } else {
-                require(sale.amount >= amount);
+                require(saleAmount >= amount);
             }
 
-            {   //to avoid stack too deep error
-                _itemTransfer(sale.metaverseId, sale.item, sale.id, amount, sale.seller, msg.sender);
-                uint256 price = amount.mul(unitPrices[i]);
+            uint256 amountLeft = saleAmount.sub(amount);
+            sale.amount = amountLeft;
 
-                mix.transferFrom(msg.sender, address(this), price.sub(mileages[i]));
-                if (mileages[i] > 0) mileage.use(msg.sender, mileages[i]);
-                _distributeReward(sale.metaverseId, msg.sender, sale.seller, price);
-            }
-            
-            uint256 amountLeft = sale.amount.sub(amount);
-            sales[saleInfo.hash][saleInfo.saleId].amount = amountLeft;
+            _itemTransfer(metaverseId, saleInfo.item, sale.id, amount, seller, msg.sender);
+            uint256 price = amount.mul(unitPrices[i]);
 
-            userOnSaleAmounts[msg.sender][sale.item][sale.id] = userOnSaleAmounts[msg.sender][sale.item][sale.id].sub(amount);
+            uint256 _mileage = mileages[i];
+            mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
+            if (_mileage > 0) mileage.use(msg.sender, _mileage);
+            _distributeReward(metaverseId, msg.sender, seller, price);
+
+            userOnSaleAmounts[msg.sender][saleInfo.item][sale.id] = userOnSaleAmounts[msg.sender][saleInfo.item][sale.id].sub(amount);
 
             bool isFulfilled = false;
             if (amountLeft == 0) {
-                _removeSale(saleVerificationIDs[i]);
+                _removeSale(saleVerificationID);
                 isFulfilled = true;
             }
 
-            emit Buy(sale.metaverseId, sale.item, sale.id, msg.sender, amount, isFulfilled, saleVerificationIDs[i]);
+            emit Buy(metaverseId, saleInfo.item, sale.id, msg.sender, amount, isFulfilled, saleVerificationID);
         }
     }
 
