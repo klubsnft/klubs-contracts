@@ -11,13 +11,7 @@ interface IItemStore {
         bool partialBuying,
         bytes32 indexed saleVerificationID
     );
-    event ChangeSellPrice(
-        uint256 indexed metaverseId,
-        address indexed item,
-        uint256 id,
-        uint256 newUnitPrice,
-        bytes32 indexed saleVerificationID
-    );
+    event ChangeSellPrice(uint256 indexed metaverseId, address indexed item, uint256 id, uint256 newUnitPrice, bytes32 indexed saleVerificationID);
     event Buy(
         uint256 indexed metaverseId,
         address indexed item,
@@ -27,13 +21,7 @@ interface IItemStore {
         bool isFulfilled,
         bytes32 indexed saleVerificationID
     );
-    event CancelSale(
-        uint256 indexed metaverseId,
-        address indexed item,
-        uint256 id,
-        uint256 amount,
-        bytes32 indexed saleVerificationID
-    );
+    event CancelSale(uint256 indexed metaverseId, address indexed item, uint256 id, uint256 amount, bytes32 indexed saleVerificationID);
 
     event MakeOffer(
         uint256 indexed metaverseId,
@@ -45,13 +33,7 @@ interface IItemStore {
         bool partialBuying,
         bytes32 indexed offerVerificationID
     );
-    event CancelOffer(
-        uint256 indexed metaverseId,
-        address indexed item,
-        uint256 id,
-        uint256 amount,
-        bytes32 indexed offerVerificationID
-    );
+    event CancelOffer(uint256 indexed metaverseId, address indexed item, uint256 id, uint256 amount, bytes32 indexed offerVerificationID);
     event AcceptOffer(
         uint256 indexed metaverseId,
         address indexed item,
@@ -72,12 +54,7 @@ interface IItemStore {
         uint256 endBlock,
         bytes32 indexed auctionVerificationID
     );
-    event CancelAuction(
-        uint256 indexed metaverseId,
-        address indexed item,
-        uint256 id,
-        bytes32 indexed auctionVerificationID
-    );
+    event CancelAuction(uint256 indexed metaverseId, address indexed item, uint256 id, bytes32 indexed auctionVerificationID);
 
     event Bid(
         uint256 indexed metaverseId,
