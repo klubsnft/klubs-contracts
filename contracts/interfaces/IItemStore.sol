@@ -9,52 +9,30 @@ interface IItemStore {
         uint256 amount,
         uint256 unitPrice,
         bool partialBuying,
-        bytes32 indexed hash,
-        uint256 saleId,
-        bytes32 verificationID
+        bytes32 indexed verificationID
     );
     event ChangeSellPrice(
         uint256 indexed metaverseId,
         address indexed item,
         uint256 id,
-        address seller,
         uint256 newUnitPrice,
-        bytes32 indexed hash,
-        uint256 saleId
+        bytes32 indexed verificationID
     );
     event Buy(
         uint256 indexed metaverseId,
         address indexed item,
         uint256 id,
-        address seller,
         address buyer,
         uint256 amount,
-        uint256 unitPrice,
-        bytes32 indexed hash,
-        uint256 saleId,
-        bool isFulfilled
+        bool isFulfilled,
+        bytes32 indexed verificationID
     );
     event CancelSale(
         uint256 indexed metaverseId,
         address indexed item,
         uint256 id,
-        address seller,
         uint256 amount,
-        uint256 unitPrice,
-        bytes32 indexed hash,
-        uint256 saleId
-    );
-    event ChangeSaleId(
-        uint256 indexed metaverseId,
-        address indexed item,
-        uint256 id,
-        address seller,
-        uint256 amount,
-        uint256 unitPrice,
-        bool partialBuying,
-        bytes32 indexed hash,
-        uint256 oldSaleId,
-        uint256 newSaleId
+        bytes32 indexed verificationID
     );
 
     event MakeOffer(
