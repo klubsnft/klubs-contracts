@@ -125,7 +125,7 @@ interface IItemStore {
 
     function userSellInfo(address seller, uint256 index) external view returns (bytes32 saleVerificationID);
 
-    function salesOnMetaverse(address metaverseId, uint256 index) external view returns (bytes32 saleVerificationID);
+    function salesOnMetaverse(uint256 metaverseId, uint256 index) external view returns (bytes32 saleVerificationID);
 
     function userOnSaleAmounts(
         address seller,
@@ -258,7 +258,7 @@ interface IItemStore {
 
     function userAuctionInfo(address seller, uint256 index) external view returns (bytes32 auctionVerificationID);
 
-    function auctionsOnMetaverse(address metaverseId, uint256 index) external view returns (bytes32 auctionVerificationID);
+    function auctionsOnMetaverse(uint256 metaverseId, uint256 index) external view returns (bytes32 auctionVerificationID);
 
     function getAuctionInfo(bytes32 auctionVerificationID)
         external
