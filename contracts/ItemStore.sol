@@ -577,7 +577,7 @@ contract ItemStore is Ownable, IItemStore {
     mapping(address => mapping(uint256 => Offer[])) public offers; //offers[item][id].
     mapping(bytes32 => OfferInfo) internal _offerInfo; //_offerInfo[offerVerificationID].
 
-    mapping(address => bytes32[]) public userOfferInfo; //userOfferInfo[offeror] 오퍼러의 오퍼들 정보.  "return saleVerificationID."
+    mapping(address => bytes32[]) public userOfferInfo; //userOfferInfo[offeror] 오퍼러의 오퍼들 정보.  "return offerVerificationID."
     mapping(bytes32 => uint256) private _userOfferIndex; //_userOfferIndex[offerVerificationID]. 특정 오퍼의 userOfferInfo index.
 
     function getOfferInfo(bytes32 offerVerificationID)
@@ -742,14 +742,14 @@ contract ItemStore is Ownable, IItemStore {
     mapping(address => mapping(uint256 => Auction[])) public auctions; //auctions[item][id].
     mapping(bytes32 => AuctionInfo) internal _auctionInfo; //_auctionInfo[auctionVerificationID].
 
-    mapping(address => bytes32[]) public onAuctions; //onAuctions[item]. 아이템 계약 중 onAuction 중인 정보들. "return saleVerificationID."
-    mapping(bytes32 => uint256) private _onAuctionsIndex; //_onAuctionsIndex[auctionHash][auctionId]. 특정 옥션의 onAuctions index.
+    mapping(address => bytes32[]) public onAuctions; //onAuctions[item]. 아이템 계약 중 onAuction 중인 정보들. "return auctionsVerificationID."
+    mapping(bytes32 => uint256) private _onAuctionsIndex; //_onAuctionsIndex[auctionVerificationID]. 특정 옥션의 onAuctions index.
 
-    mapping(address => bytes32[]) public userAuctionInfo; //userAuctionInfo[seller] 셀러의 옥션들 정보. "return saleVerificationID."
-    mapping(bytes32 => uint256) private _userAuctionIndex; //_userAuctionIndex[auctionHash][auctionId]. 특정 옥션의 userAuctionInfo index.
+    mapping(address => bytes32[]) public userAuctionInfo; //userAuctionInfo[seller] 셀러의 옥션들 정보. "return auctionsVerificationID."
+    mapping(bytes32 => uint256) private _userAuctionIndex; //_userAuctionIndex[auctionVerificationID]. 특정 옥션의 userAuctionInfo index.
 
-    mapping(uint256 => bytes32[]) public auctionsOnMetaverse; //auctionsOnMetaverse[metaverseId]. 특정 메타버스의 모든 옥션들. "return saleVerificationID."
-    mapping(bytes32 => uint256) private _auctionsOnMvIndex; //_auctionsOnMvIndex[auctionHash][auctionId]. 특정 옥션의 auctionsOnMetaverse index.
+    mapping(uint256 => bytes32[]) public auctionsOnMetaverse; //auctionsOnMetaverse[metaverseId]. 특정 메타버스의 모든 옥션들. "return auctionsVerificationID."
+    mapping(bytes32 => uint256) private _auctionsOnMvIndex; //_auctionsOnMvIndex[auctionVerificationID]. 특정 옥션의 auctionsOnMetaverse index.
 
     function getAuctionInfo(bytes32 auctionVerificationID)
         external
@@ -885,8 +885,9 @@ contract ItemStore is Ownable, IItemStore {
 
     mapping(bytes32 => Bidding[]) public biddings; //biddings[auctionVerificationID].
 
-    mapping(address => BiddingInfo[]) public userBiddingInfo; //userBiddingInfo[bidder] 비더의 비딩들 정보.   "return saleVerificationID."
-    mapping(address => mapping(bytes32 => uint256)) private _userBiddingIndex; //_userBiddingIndex[bidder][auctionVerificationID]. 특정 비딩의 userBiddingInfo index.
+    mapping(address => BiddingInfo[]) public userBiddingInfo; //userBiddingInfo[bidder] 비더의 비딩들 정보.   "return BiddingInfo"
+    mapping(address => mapping(bytes32 => uint256)) private _userBiddingIndex;
+    //_userBiddingIndex[bidder][auctionVerificationID]. 특정 유저가 특정 옥션에 최종 입찰 중인 비딩의 userBiddingInfo index.
 
     function userBiddingInfoLength(address bidder) external view returns (uint256) {
         return userBiddingInfo[bidder].length;
