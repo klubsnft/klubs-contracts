@@ -177,43 +177,35 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
-    function _removeOffer(bytes32 hash, uint256 offerId) private {
-        Offer memory _offer = offers[hash][offerId];
+    function _removeOffer(bytes32 offerVerificationID) private {
+        OfferInfo storage offerInfo = _offerInfo[offerVerificationID];
+        address item = offerInfo.item;
+        uint256 id = offerInfo.id;
+        uint256 offerId = offerInfo.offerId;
 
-        //delete sales
-        uint256 lastOfferId = offers[hash].length.sub(1);
-        Offer memory lastOffer = offers[hash][lastOfferId];
+        Offer memory offer = offers[item][id][offerId];
+
+        //delete offers
+        uint256 lastOfferId = offers[item][id].length.sub(1);
+        Offer memory lastOffer = offers[item][id][lastOfferId];
         if (offerId != lastOfferId) {
-            offers[hash][offerId] = lastOffer;
-            emit ChangeOfferId(
-                lastOffer.metaverseId,
-                lastOffer.item,
-                lastOffer.id,
-                lastOffer.offeror,
-                lastOffer.amount,
-                lastOffer.unitPrice,
-                lastOffer.partialBuying,
-                hash,
-                lastOfferId,
-                offerId
-            );
+            offers[item][id][offerId] = lastOffer;
+            _offerInfo[lastOffer.verificationID].offerId = offerId;
         }
-        offers[hash].length--;
+        offers[item][id].length--;
+        delete _offerInfo[offerVerificationID];
 
         //delete userOfferInfo
-        uint256 lastIndex = userOfferInfo[_offer.offeror].length.sub(1);
-        uint256 index = _userOfferIndex[hash][offerId];
+        address offeror = offer.offeror;
+        uint256 lastIndex = userOfferInfo[offeror].length.sub(1);
+        uint256 index = _userOfferIndex[offerVerificationID];
         if (index != lastIndex) {
-            OfferInfo memory lastOfferInfo = userOfferInfo[_offer.offeror][lastIndex];
-            userOfferInfo[_offer.offeror][index] = lastOfferInfo;
-            _userOfferIndex[lastOfferInfo.hash][lastOfferInfo.offerId] = index;
+            bytes32 lastOfferVerificationID = userOfferInfo[offeror][lastIndex];
+            userOfferInfo[offeror][index] = lastOfferVerificationID;
+            _userOfferIndex[lastOfferVerificationID] = index;
         }
-        userOfferInfo[_offer.offeror].length--;
-
-        uint256 _lastOfferUserIndex = _userOfferIndex[hash][lastOfferId];
-        userOfferInfo[lastOffer.offeror][_lastOfferUserIndex].offerId = offerId;
-        _userOfferIndex[hash][offerId] = _lastOfferUserIndex;
-        delete _userOfferIndex[hash][lastOfferId];
+        userOfferInfo[offeror].length--;
+        delete _userOfferIndex[offerVerificationID];
     }
 
     function _removeAuction(bytes32 hash, uint256 auctionId) private {
@@ -578,21 +570,38 @@ contract ItemStore is Ownable, IItemStore {
     }
 
     struct OfferInfo {
-        bytes32 hash;
+        address item;
+        uint256 id;
         uint256 offerId;
     }
 
-    mapping(bytes32 => Offer[]) public offers; //offers[hash]. hash: item,id
+    mapping(address => mapping(uint256 => Offer[])) public offers; //offers[item][id].
+    mapping(bytes32 => OfferInfo) internal _offerInfo; //_offerInfo[offerVerificationID].
 
-    mapping(address => OfferInfo[]) public userOfferInfo; //userOfferInfo[offeror] 오퍼러의 오퍼들 정보.
-    mapping(bytes32 => mapping(uint256 => uint256)) private _userOfferIndex; //_userOfferIndex[offerHash][offerId]. 특정 오퍼의 userOfferInfo index.
+    mapping(address => bytes32[]) public userOfferInfo; //userOfferInfo[offeror] 오퍼러의 오퍼들 정보.  "return saleVerificationID."
+    mapping(bytes32 => uint256) private _userOfferIndex; //_userOfferIndex[offerVerificationID]. 특정 오퍼의 userOfferInfo index.
+
+    function getOfferInfo(bytes32 offerVerificationID)
+        external
+        view
+        returns (
+            address item,
+            uint256 id,
+            uint256 offerId
+        )
+    {
+        OfferInfo memory offerInfo = _offerInfo[offerVerificationID];
+        require(offerInfo.item != address(0));
+
+        return (offerInfo.item, offerInfo.id, offerInfo.offerId);
+    }
 
     function userOfferInfoLength(address offeror) external view returns (uint256) {
         return userOfferInfo[offeror].length;
     }
 
-    function offerCount(bytes32 offerHash) external view returns (uint256) {
-        return offers[offerHash].length;
+    function offerCount(address item, uint256 id) external view returns (uint256) {
+        return offers[item][id].length;
     }
 
     function canOffer(
@@ -629,9 +638,10 @@ contract ItemStore is Ownable, IItemStore {
             abi.encodePacked(msg.sender, metaverseId, item, id, amount, unitPrice, partialBuying, _mileage, nonce[msg.sender]++)
         );
 
-        bytes32 hash = keccak256(abi.encodePacked(item, id));
-        offerId = offers[hash].length;
-        offers[hash].push(
+        require(_offerInfo[verificationID].item == address(0));
+
+        offerId = offers[item][id].length;
+        offers[item][id].push(
             Offer({
                 offeror: msg.sender,
                 metaverseId: metaverseId,
@@ -645,80 +655,65 @@ contract ItemStore is Ownable, IItemStore {
             })
         );
 
-        _userOfferIndex[hash][offerId] = userOfferInfo[msg.sender].length;
-        userOfferInfo[msg.sender].push(OfferInfo({hash: hash, offerId: offerId}));
+        _userOfferIndex[verificationID] = userOfferInfo[msg.sender].length;
+        userOfferInfo[msg.sender].push(verificationID);
 
         mix.transferFrom(msg.sender, address(this), amount.mul(unitPrice).sub(_mileage));
         if (_mileage > 0) mileage.use(msg.sender, _mileage);
 
-        emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, hash, offerId, verificationID);
+        emit MakeOffer(metaverseId, item, id, msg.sender, amount, unitPrice, partialBuying, verificationID);
     }
 
-    function cancelOffer(
-        bytes32 hash,
-        uint256 offerId,
-        bytes32 _verificationID
-    ) external {
-        Offer memory _offer = offers[hash][offerId];
-        require(_offer.offeror == msg.sender);
-        require(_offer.verificationID == _verificationID);
+    function cancelOffer(bytes32 offerVerificationID) external {
+        OfferInfo storage offerInfo = _offerInfo[offerVerificationID];
+        Offer memory offer = offers[offerInfo.item][offerInfo.id][offerInfo.offerId];
+        require(offer.offeror == msg.sender);
 
-        _removeOffer(hash, offerId);
+        _removeOffer(offerVerificationID);
 
-        mix.transfer(msg.sender, _offer.amount.mul(_offer.unitPrice).sub(_offer.mileage));
-        if (_offer.mileage > 0) {
-            mix.approve(address(mileage), _offer.mileage);
-            mileage.charge(msg.sender, _offer.mileage);
+        mix.transfer(msg.sender, offer.amount.mul(offer.unitPrice).sub(offer.mileage));
+        if (offer.mileage > 0) {
+            mix.approve(address(mileage), offer.mileage);
+            mileage.charge(msg.sender, offer.mileage);
         }
 
-        emit CancelOffer(_offer.metaverseId, _offer.item, _offer.id, msg.sender, _offer.amount, _offer.unitPrice, hash, offerId);
+        emit CancelOffer(offer.metaverseId, offer.item, offer.id, offer.amount, offerVerificationID);
     }
 
-    function acceptOffer(
-        address item,
-        bytes32 hash,
-        uint256 offerId,
-        uint256 amount,
-        uint256 unitPrice
-    ) external userWhitelist(msg.sender) {
-        Offer memory _offer = offers[hash][offerId];
-        require(isItemWhitelisted(_offer.metaverseId, _offer.item));
-        require(_offer.item == item);
-        require(_offer.offeror != address(0) && _offer.offeror != msg.sender);
-        require(_offer.unitPrice == unitPrice);
+    function acceptOffer(bytes32 offerVerificationID, uint256 amount) external userWhitelist(msg.sender) {
+        OfferInfo storage offerInfo = _offerInfo[offerVerificationID];
+        Offer storage offer = offers[offerInfo.item][offerInfo.id][offerInfo.offerId];
 
-        if (!_offer.partialBuying) {
-            require(_offer.amount == amount);
+        address offeror = offer.offeror;
+        uint256 metaverseId = offer.metaverseId;
+        address item = offer.item;
+        uint256 id = offer.id;
+        uint256 offerAmount = offer.amount;
+
+        require(isItemWhitelisted(metaverseId, item));
+        require(offeror != address(0) && offeror != msg.sender);
+
+        if (!offer.partialBuying) {
+            require(offerAmount == amount);
         } else {
-            require(_offer.amount >= amount);
+            require(offerAmount >= amount);
         }
 
-        _itemTransfer(_offer.metaverseId, _offer.item, _offer.id, amount, msg.sender, _offer.offeror);
-        uint256 price = amount.mul(_offer.unitPrice);
+        uint256 amountLeft = offerAmount.sub(amount);
+        offer.amount = amountLeft;
 
-        _distributeReward(_offer.metaverseId, _offer.offeror, msg.sender, price);
+        _itemTransfer(metaverseId, item, id, amount, msg.sender, offeror);
+        uint256 price = amount.mul(offer.unitPrice);
 
-        uint256 amountLeft = _offer.amount.sub(amount);
-        offers[hash][offerId].amount = amountLeft;
+        _distributeReward(metaverseId, offeror, msg.sender, price);
 
         bool isFulfilled = false;
         if (amountLeft == 0) {
-            _removeOffer(hash, offerId);
+            _removeOffer(offerVerificationID);
             isFulfilled = true;
         }
 
-        emit AcceptOffer(
-            _offer.metaverseId,
-            _offer.item,
-            _offer.id,
-            _offer.offeror,
-            msg.sender,
-            _offer.amount,
-            _offer.unitPrice,
-            hash,
-            offerId,
-            isFulfilled
-        );
+        emit AcceptOffer(metaverseId, item, id, msg.sender, offerAmount, isFulfilled, offerVerificationID);
     }
 
     //Auction
