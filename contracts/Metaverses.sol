@@ -3,7 +3,6 @@ pragma solidity ^0.5.6;
 import "./klaytn-contracts/utils/Address.sol";
 import "./klaytn-contracts/ownership/Ownable.sol";
 import "./klaytn-contracts/math/SafeMath.sol";
-import "./klaytn-contracts/token/KIP17/IKIP17.sol";
 import "./klaytn-contracts/access/roles/MinterRole.sol";
 import "./klaytn-contracts/token/KIP17/IKIP17Enumerable.sol";
 import "./interfaces/IMetaverses.sol";
