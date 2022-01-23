@@ -4,117 +4,24 @@ import "./klaytn-contracts/ownership/Ownable.sol";
 import "./klaytn-contracts/math/SafeMath.sol";
 import "./klaytn-contracts/token/KIP17/IKIP17.sol";
 import "./klaytn-contracts/token/KIP37/IKIP37.sol";
-import "./interfaces/IItemStore.sol";
+import "./libraries/ItemStoreLibrary.sol";
+import "./interfaces/IItemStoreSale.sol";
 import "./interfaces/IMetaverses.sol";
 import "./interfaces/IMix.sol";
 import "./interfaces/IMileage.sol";
 
-contract ItemStore is Ownable, IItemStore {
+contract ItemStoreSale is Ownable, IItemStoreSale {
     using SafeMath for uint256;
+    using ItemStoreLibrary for *;
 
-    uint256 public fee = 250;
-    address public feeReceiver;
-    uint256 public auctionExtensionInterval = 300;
-
-    IMetaverses public metaverses;
+    IItemStoreCommon public commonData;
     IMix public mix;
     IMileage public mileage;
 
-    constructor(
-        IMetaverses _metaverses,
-        IMix _mix,
-        IMileage _mileage
-    ) public {
-        feeReceiver = msg.sender;
-        metaverses = _metaverses;
-        mix = _mix;
-        mileage = _mileage;
-    }
-
-    function setFee(uint256 _fee) external onlyOwner {
-        require(_fee < 9 * 1e3); //max 90%
-        fee = _fee;
-    }
-
-    function setFeeReceiver(address _receiver) external onlyOwner {
-        feeReceiver = _receiver;
-    }
-
-    function setAuctionExtensionInterval(uint256 interval) external onlyOwner {
-        auctionExtensionInterval = interval;
-    }
-
-    function setMetaverses(IMetaverses _metaverses) external onlyOwner {
-        metaverses = _metaverses;
-    }
-
-    function isMetaverseWhitelisted(uint256 metaverseId) private view returns (bool) {
-        return (metaverseId < metaverses.metaverseCount() && !metaverses.banned(metaverseId));
-    }
-
-    function isItemWhitelisted(uint256 metaverseId, address item) private view returns (bool) {
-        if (!isMetaverseWhitelisted(metaverseId)) return false;
-        return (metaverses.itemAdded(metaverseId, item));
-    }
-
-    mapping(address => bool) public isBanned;
-
-    function banUser(address user) external onlyOwner {
-        isBanned[user] = true;
-        emit Ban(user);
-    }
-
-    function unbanUser(address user) external onlyOwner {
-        isBanned[user] = false;
-        emit Unban(user);
-    }
-
-    modifier userWhitelist(address user) {
-        require(!isBanned[user]);
-        _;
-    }
-
-    function _isERC1155(uint256 metaverseId, address item) internal view returns (bool) {
-        return metaverses.itemTypes(metaverseId, item) == IMetaverses.ItemType.ERC1155;
-    }
-
-    function batchTransfer(
-        uint256[] calldata metaverseIds,
-        address[] calldata items,
-        uint256[] calldata ids,
-        address[] calldata to,
-        uint256[] calldata amounts
-    ) external userWhitelist(msg.sender) {
-        require(
-            metaverseIds.length == items.length &&
-                metaverseIds.length == ids.length &&
-                metaverseIds.length == to.length &&
-                metaverseIds.length == amounts.length
-        );
-        uint256 metaverseCount = metaverses.metaverseCount();
-        for (uint256 i = 0; i < metaverseIds.length; i++) {
-            uint256 metaverseId = metaverseIds[i];
-            require(metaverseId < metaverseCount && !metaverses.banned(metaverseId));
-            require(metaverses.itemAdded(metaverseId, items[i]));
-            _itemTransfer(metaverseId, items[i], ids[i], amounts[i], msg.sender, to[i]);
-        }
-    }
-
-    function _itemTransfer(
-        uint256 metaverseId,
-        address item,
-        uint256 id,
-        uint256 amount,
-        address from,
-        address to
-    ) internal {
-        if (_isERC1155(metaverseId, item)) {
-            require(amount > 0);
-            IKIP37(item).safeTransferFrom(from, to, id, amount, "");
-        } else {
-            require(amount == 1);
-            IKIP17(item).transferFrom(from, to, id);
-        }
+    constructor(IItemStoreCommon _commonData) public {
+        commonData = _commonData;
+        mix = _commonData.mix();
+        mileage = _commonData.mileage();
     }
 
     //use verificationID as a parameter in "_removeXXXX" functions for safety despite a waste of gas
@@ -209,66 +116,16 @@ contract ItemStore is Ownable, IItemStore {
         delete _userOfferIndex[offerVerificationID];
     }
 
-    function _removeAuction(bytes32 auctionVerificationID) private {
-        AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationID];
-        address item = auctionInfo.item;
-        uint256 id = auctionInfo.id;
-        uint256 auctionId = auctionInfo.auctionId;
-
-        Auction storage auction = auctions[item][id][auctionId];
-
-        //delete auctions
-        uint256 lastAuctionId = auctions[item][id].length.sub(1);
-        Auction memory lastAuction = auctions[item][id][lastAuctionId];
-        if (auctionId != lastAuctionId) {
-            auctions[item][id][auctionId] = lastAuction;
-            _auctionInfo[lastAuction.verificationID].auctionId = auctionId;
-        }
-        auctions[item][id].length--;
-        delete _auctionInfo[auctionVerificationID];
-
-        //delete onAuctions
-        uint256 lastIndex = onAuctions[item].length.sub(1);
-        uint256 index = _onAuctionsIndex[auctionVerificationID];
-        if (index != lastIndex) {
-            bytes32 lastAuctionVerificationID = onAuctions[item][lastIndex];
-            onAuctions[item][index] = lastAuctionVerificationID;
-            _onAuctionsIndex[lastAuctionVerificationID] = index;
-        }
-        onAuctions[item].length--;
-        delete _onAuctionsIndex[auctionVerificationID];
-
-        //delete userAuctionInfo
-        address seller = auction.seller;
-        lastIndex = userAuctionInfo[seller].length.sub(1);
-        index = _userAuctionIndex[auctionVerificationID];
-        if (index != lastIndex) {
-            bytes32 lastAuctionVerificationID = userAuctionInfo[seller][lastIndex];
-            userAuctionInfo[seller][index] = lastAuctionVerificationID;
-            _userAuctionIndex[lastAuctionVerificationID] = index;
-        }
-        userAuctionInfo[seller].length--;
-        delete _userAuctionIndex[auctionVerificationID];
-
-        //delete auctionsOnMetaverse
-        uint256 metaverseId = auction.metaverseId;
-        lastIndex = auctionsOnMetaverse[metaverseId].length.sub(1);
-        index = _auctionsOnMvIndex[auctionVerificationID];
-        if (index != lastIndex) {
-            bytes32 lastAuctionVerificationID = auctionsOnMetaverse[metaverseId][lastIndex];
-            auctionsOnMetaverse[metaverseId][index] = lastAuctionVerificationID;
-            _auctionsOnMvIndex[lastAuctionVerificationID] = index;
-        }
-        auctionsOnMetaverse[metaverseId].length--;
-        delete _auctionsOnMvIndex[auctionVerificationID];
-    }
-
     function _distributeReward(
         uint256 metaverseId,
         address buyer,
         address seller,
         uint256 price
     ) private {
+        IMetaverses metaverses = commonData.metaverses();
+
+        uint256 fee = commonData.fee();
+
         (address receiver, uint256 royalty) = metaverses.royalties(metaverseId);
 
         uint256 _fee;
@@ -315,14 +172,15 @@ contract ItemStore is Ownable, IItemStore {
             _royalty = price.mul(royalty).div(1e4);
         }
 
-        if (_fee > 0) mix.transfer(feeReceiver, _fee);
+        if (_fee > 0) mix.transfer(commonData.feeReceiver(), _fee);
         if (_royalty > 0) mix.transfer(receiver, _royalty);
         if (_mileage > 0) {
             mix.approve(address(mileage), _mileage);
             mileage.charge(buyer, _mileage);
         }
 
-        mix.transfer(seller, price.sub(_fee).sub(_royalty).sub(_mileage));
+        price = price.sub(_fee).sub(_royalty).sub(_mileage);
+        mix.transfer(seller, price);
     }
 
     mapping(address => uint256) public nonce;
@@ -397,9 +255,9 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id,
         uint256 amount
     ) public view returns (bool) {
-        if (!isItemWhitelisted(metaverseId, item)) return false;
+        if (!commonData.isItemWhitelisted(metaverseId, item)) return false;
 
-        if (_isERC1155(metaverseId, item)) {
+        if (item._isERC1155(commonData.metaverses(), metaverseId)) {
             if (amount == 0) return false;
             if (userOnSaleAmounts[seller][item][id].add(amount) > IKIP37(item).balanceOf(seller, id)) return false;
             return true;
@@ -418,7 +276,8 @@ contract ItemStore is Ownable, IItemStore {
         uint256[] calldata amounts,
         uint256[] calldata unitPrices,
         bool[] calldata partialBuyings
-    ) external userWhitelist(msg.sender) {
+    ) external {
+        require(!commonData.isBannedUser(msg.sender));
         require(
             metaverseIds.length == items.length &&
                 metaverseIds.length == ids.length &&
@@ -474,7 +333,8 @@ contract ItemStore is Ownable, IItemStore {
         }
     }
 
-    function changeSellPrice(bytes32[] calldata saleVerificationIDs, uint256[] calldata unitPrices) external userWhitelist(msg.sender) {
+    function changeSellPrice(bytes32[] calldata saleVerificationIDs, uint256[] calldata unitPrices) external {
+        require(!commonData.isBannedUser(msg.sender));
         require(saleVerificationIDs.length == unitPrices.length);
         for (uint256 i = 0; i < saleVerificationIDs.length; i++) {
             SaleInfo storage saleInfo = _saleInfo[saleVerificationIDs[i]];
@@ -510,8 +370,12 @@ contract ItemStore is Ownable, IItemStore {
         uint256[] calldata amounts,
         uint256[] calldata unitPrices,
         uint256[] calldata mileages
-    ) external userWhitelist(msg.sender) {
+    ) external {
+        require(!commonData.isBannedUser(msg.sender));
         require(amounts.length == saleVerificationIDs.length && amounts.length == unitPrices.length && amounts.length == mileages.length);
+
+        IMetaverses metaverses = commonData.metaverses();
+
         for (uint256 i = 0; i < amounts.length; i++) {
             bytes32 saleVerificationID = saleVerificationIDs[i];
             SaleInfo memory saleInfo = _saleInfo[saleVerificationID];
@@ -520,22 +384,26 @@ contract ItemStore is Ownable, IItemStore {
             address seller = sale.seller;
             uint256 metaverseId = sale.metaverseId;
 
-            require(isItemWhitelisted(metaverseId, saleInfo.item));
+            require(commonData.isItemWhitelisted(metaverseId, saleInfo.item));
             require(seller != address(0) && seller != msg.sender);
             require(sale.unitPrice == unitPrices[i]);
 
             uint256 amount = amounts[i];
-            uint256 saleAmount = sale.amount;
-            if (!sale.partialBuying) {
-                require(saleAmount == amount);
-            } else {
-                require(saleAmount >= amount);
+            uint256 amountLeft;
+
+            {
+                uint256 saleAmount = sale.amount;
+                if (!sale.partialBuying) {
+                    require(saleAmount == amount);
+                } else {
+                    require(saleAmount >= amount);
+                }
+
+                amountLeft = saleAmount.sub(amount);
+                sale.amount = amountLeft;
             }
 
-            uint256 amountLeft = saleAmount.sub(amount);
-            sale.amount = amountLeft;
-
-            _itemTransfer(metaverseId, saleInfo.item, saleInfo.id, amount, seller, msg.sender);
+            saleInfo.item._transferItems(metaverses, metaverseId, saleInfo.id, amount, seller, msg.sender);
             uint256 price = amount.mul(unitPrices[i]);
 
             uint256 _mileage = mileages[i];
@@ -610,8 +478,8 @@ contract ItemStore is Ownable, IItemStore {
         uint256 id,
         uint256 amount
     ) public view returns (bool) {
-        if (!isItemWhitelisted(metaverseId, item)) return false;
-        if (_isERC1155(metaverseId, item)) {
+        if (!commonData.isItemWhitelisted(metaverseId, item)) return false;
+        if (item._isERC1155(commonData.metaverses(), metaverseId)) {
             if (amount == 0) return false;
             return true;
         } else {
@@ -629,7 +497,8 @@ contract ItemStore is Ownable, IItemStore {
         uint256 unitPrice,
         bool partialBuying,
         uint256 _mileage
-    ) external userWhitelist(msg.sender) returns (uint256 offerId) {
+    ) external returns (uint256 offerId) {
+        require(!commonData.isBannedUser(msg.sender));
         require(unitPrice > 0);
         require(canOffer(msg.sender, metaverseId, item, id, amount));
 
@@ -684,7 +553,8 @@ contract ItemStore is Ownable, IItemStore {
         _removeOffer(offerVerificationID);
     }
 
-    function acceptOffer(bytes32 offerVerificationID, uint256 amount) external userWhitelist(msg.sender) {
+    function acceptOffer(bytes32 offerVerificationID, uint256 amount) external {
+        require(!commonData.isBannedUser(msg.sender));
         OfferInfo storage offerInfo = _offerInfo[offerVerificationID];
         address item = offerInfo.item;
         uint256 id = offerInfo.id;
@@ -695,7 +565,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 metaverseId = offer.metaverseId;
         uint256 offerAmount = offer.amount;
 
-        require(isItemWhitelisted(metaverseId, item));
+        require(commonData.isItemWhitelisted(metaverseId, item));
         require(offeror != address(0) && offeror != msg.sender);
 
         if (!offer.partialBuying) {
@@ -707,7 +577,7 @@ contract ItemStore is Ownable, IItemStore {
         uint256 amountLeft = offerAmount.sub(amount);
         offer.amount = amountLeft;
 
-        _itemTransfer(metaverseId, item, id, amount, msg.sender, offeror);
+        item._transferItems(commonData.metaverses(), metaverseId, id, amount, msg.sender, offeror);
         uint256 price = amount.mul(offer.unitPrice);
 
         _distributeReward(metaverseId, offeror, msg.sender, price);
@@ -719,307 +589,6 @@ contract ItemStore is Ownable, IItemStore {
         }
 
         emit AcceptOffer(metaverseId, item, id, msg.sender, offerAmount, isFulfilled, offerVerificationID);
-    }
-
-    //Auction
-    struct Auction {
-        address seller;
-        uint256 metaverseId;
-        address item;
-        uint256 id;
-        uint256 amount;
-        uint256 startTotalPrice;
-        uint256 endBlock;
-        bytes32 verificationID;
-    }
-
-    struct AuctionInfo {
-        address item;
-        uint256 id;
-        uint256 auctionId;
-    }
-
-    mapping(address => mapping(uint256 => Auction[])) public auctions; //auctions[item][id].
-    mapping(bytes32 => AuctionInfo) internal _auctionInfo; //_auctionInfo[auctionVerificationID].
-
-    mapping(address => bytes32[]) public onAuctions; //onAuctions[item]. 아이템 계약 중 onAuction 중인 정보들. "return auctionsVerificationID."
-    mapping(bytes32 => uint256) private _onAuctionsIndex; //_onAuctionsIndex[auctionVerificationID]. 특정 옥션의 onAuctions index.
-
-    mapping(address => bytes32[]) public userAuctionInfo; //userAuctionInfo[seller] 셀러의 옥션들 정보. "return auctionsVerificationID."
-    mapping(bytes32 => uint256) private _userAuctionIndex; //_userAuctionIndex[auctionVerificationID]. 특정 옥션의 userAuctionInfo index.
-
-    mapping(uint256 => bytes32[]) public auctionsOnMetaverse; //auctionsOnMetaverse[metaverseId]. 특정 메타버스의 모든 옥션들. "return auctionsVerificationID."
-    mapping(bytes32 => uint256) private _auctionsOnMvIndex; //_auctionsOnMvIndex[auctionVerificationID]. 특정 옥션의 auctionsOnMetaverse index.
-
-    function getAuctionInfo(bytes32 auctionVerificationID)
-        external
-        view
-        returns (
-            address item,
-            uint256 id,
-            uint256 auctionId
-        )
-    {
-        AuctionInfo memory auctionInfo = _auctionInfo[auctionVerificationID];
-        require(auctionInfo.item != address(0));
-
-        return (auctionInfo.item, auctionInfo.id, auctionInfo.auctionId);
-    }
-
-    function auctionsCount(address item, uint256 id) external view returns (uint256) {
-        return auctions[item][id].length;
-    }
-
-    function onAuctionsCount(address item) external view returns (uint256) {
-        return onAuctions[item].length;
-    }
-
-    function userAuctionInfoLength(address seller) external view returns (uint256) {
-        return userAuctionInfo[seller].length;
-    }
-
-    function auctionsOnMetaverseLength(uint256 metaverseId) external view returns (uint256) {
-        return auctionsOnMetaverse[metaverseId].length;
-    }
-
-    function canCreateAuction(
-        address seller,
-        uint256 metaverseId,
-        address item,
-        uint256 id,
-        uint256 amount
-    ) public view returns (bool) {
-        if (!isItemWhitelisted(metaverseId, item)) return false;
-
-        if (_isERC1155(metaverseId, item)) {
-            if (amount == 0) return false;
-            if (IKIP37(item).balanceOf(seller, id) < amount) return false;
-            return true;
-        } else {
-            if (amount != 1) return false;
-            if (IKIP17(item).ownerOf(id) != seller) return false;
-            return true;
-        }
-    }
-
-    function createAuction(
-        uint256 metaverseId,
-        address item,
-        uint256 id,
-        uint256 amount,
-        uint256 startTotalPrice,
-        uint256 endBlock
-    ) external userWhitelist(msg.sender) returns (uint256 auctionId) {
-        require(startTotalPrice > 0);
-        require(endBlock > block.number);
-        require(canCreateAuction(msg.sender, metaverseId, item, id, amount));
-
-        bytes32 verificationID = keccak256(
-            abi.encodePacked(msg.sender, metaverseId, item, id, amount, startTotalPrice, endBlock, nonce[msg.sender]++)
-        );
-
-        require(_auctionInfo[verificationID].item == address(0));
-
-        auctionId = auctions[item][id].length;
-        auctions[item][id].push(
-            Auction({
-                seller: msg.sender,
-                metaverseId: metaverseId,
-                item: item,
-                id: id,
-                amount: amount,
-                startTotalPrice: startTotalPrice,
-                endBlock: endBlock,
-                verificationID: verificationID
-            })
-        );
-
-        _auctionInfo[verificationID] = AuctionInfo({item: item, id: id, auctionId: auctionId});
-
-        _onAuctionsIndex[verificationID] = onAuctions[item].length;
-        onAuctions[item].push(verificationID);
-
-        _userAuctionIndex[verificationID] = userAuctionInfo[msg.sender].length;
-        userAuctionInfo[msg.sender].push(verificationID);
-
-        _auctionsOnMvIndex[verificationID] = auctionsOnMetaverse[metaverseId].length;
-        auctionsOnMetaverse[metaverseId].push(verificationID);
-
-        _itemTransfer(metaverseId, item, id, amount, msg.sender, address(this));
-
-        emit CreateAuction(metaverseId, item, id, msg.sender, amount, startTotalPrice, endBlock, verificationID);
-    }
-
-    function cancelAuction(bytes32 auctionVerificationID) external {
-        require(biddings[auctionVerificationID].length == 0);
-        AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationID];
-        address item = auctionInfo.item;
-        uint256 id = auctionInfo.id;
-
-        Auction storage auction = auctions[item][id][auctionInfo.auctionId];
-
-        require(auction.seller == msg.sender);
-
-        uint256 metaverseId = auction.metaverseId;
-        _itemTransfer(metaverseId, item, id, auction.amount, address(this), msg.sender);
-        emit CancelAuction(metaverseId, item, id, auctionVerificationID);
-
-        _removeAuction(auctionVerificationID);
-    }
-
-    //Bidding
-    struct Bidding {
-        address bidder;
-        uint256 metaverseId;
-        address item;
-        uint256 id;
-        uint256 amount;
-        uint256 price;
-        uint256 mileage;
-    }
-
-    struct BiddingInfo {
-        bytes32 auctionVerificationID;
-        uint256 biddingId;
-    }
-
-    mapping(bytes32 => Bidding[]) public biddings; //biddings[auctionVerificationID].
-
-    mapping(address => BiddingInfo[]) public userBiddingInfo; //userBiddingInfo[bidder] 비더의 비딩들 정보.   "return BiddingInfo"
-    mapping(address => mapping(bytes32 => uint256)) private _userBiddingIndex;
-    //_userBiddingIndex[bidder][auctionVerificationID]. 특정 유저가 특정 옥션에 최종 입찰 중인 비딩의 userBiddingInfo index.
-
-    function userBiddingInfoLength(address bidder) external view returns (uint256) {
-        return userBiddingInfo[bidder].length;
-    }
-
-    function biddingsCount(bytes32 auctionVerificationID) external view returns (uint256) {
-        return biddings[auctionVerificationID].length;
-    }
-
-    function canBid(
-        address bidder,
-        uint256 price,
-        bytes32 auctionVerificationID
-    ) public view returns (bool) {
-        AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationID];
-        address item = auctionInfo.item;
-
-        if (item == address(0)) return false;
-
-        Auction storage auction = auctions[item][auctionInfo.id][auctionInfo.auctionId];
-
-        if (!isItemWhitelisted(auction.metaverseId, item)) return false;
-
-        address seller = auction.seller;
-        if (seller == address(0) || seller == bidder) return false;
-        if (auction.endBlock <= block.number) return false;
-
-        Bidding[] storage bs = biddings[auctionVerificationID];
-        uint256 biddingLength = bs.length;
-        if (biddingLength == 0) {
-            if (auction.startTotalPrice > price) return false;
-            return true;
-        } else {
-            if (bs[biddingLength - 1].price >= price) return false;
-            return true;
-        }
-    }
-
-    function bid(
-        bytes32 auctionVerificationID,
-        uint256 price,
-        uint256 _mileage
-    ) external userWhitelist(msg.sender) returns (uint256 biddingId) {
-        require(canBid(msg.sender, price, auctionVerificationID));
-        AuctionInfo memory auctionInfo = _auctionInfo[auctionVerificationID];
-
-        Auction storage auction = auctions[auctionInfo.item][auctionInfo.id][auctionInfo.auctionId];
-
-        uint256 metaverseId = auction.metaverseId;
-        uint256 amount = auction.amount;
-
-        Bidding[] storage bs = biddings[auctionVerificationID];
-        biddingId = bs.length;
-        if (biddingId > 0) {
-            Bidding storage lastBidding = bs[biddingId - 1];
-            address lastBidder = lastBidding.bidder;
-            uint256 lastMileage = lastBidding.mileage;
-            mix.transfer(lastBidder, lastBidding.price.sub(lastMileage));
-            if (lastMileage > 0) {
-                mix.approve(address(mileage), lastMileage);
-                mileage.charge(lastBidder, lastMileage);
-            }
-            _removeUserBiddingInfo(lastBidder, auctionVerificationID);
-        }
-
-        bs.push(
-            Bidding({
-                bidder: msg.sender,
-                metaverseId: metaverseId,
-                item: auctionInfo.item,
-                id: auctionInfo.id,
-                amount: amount,
-                price: price,
-                mileage: _mileage
-            })
-        );
-
-        _userBiddingIndex[msg.sender][auctionVerificationID] = userBiddingInfo[msg.sender].length;
-        userBiddingInfo[msg.sender].push(BiddingInfo({auctionVerificationID: auctionVerificationID, biddingId: biddingId}));
-
-        mix.transferFrom(msg.sender, address(this), price.sub(_mileage));
-        if (_mileage > 0) mileage.use(msg.sender, _mileage);
-        {
-            //to avoid stack too deep error
-            uint256 endBlock = auction.endBlock;
-            if (block.number >= endBlock.sub(auctionExtensionInterval)) {
-                auction.endBlock = endBlock.add(auctionExtensionInterval);
-            }
-        }
-        emit Bid(metaverseId, auctionInfo.item, auctionInfo.id, msg.sender, amount, price, auctionVerificationID, biddingId);
-    }
-
-    function _removeUserBiddingInfo(address bidder, bytes32 auctionVerificationID) private {
-        uint256 lastIndex = userBiddingInfo[bidder].length.sub(1);
-        uint256 index = _userBiddingIndex[bidder][auctionVerificationID];
-
-        if (index != lastIndex) {
-            BiddingInfo memory lastBiddingInfo = userBiddingInfo[bidder][lastIndex];
-            userBiddingInfo[bidder][index] = lastBiddingInfo;
-            _userBiddingIndex[bidder][lastBiddingInfo.auctionVerificationID] = index;
-        }
-        delete _userBiddingIndex[bidder][auctionVerificationID];
-        userBiddingInfo[bidder].length--;
-    }
-
-    function claim(bytes32 auctionVerificationID) external {
-        AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationID];
-        address item = auctionInfo.item;
-        uint256 id = auctionInfo.id;
-
-        Auction storage auction = auctions[item][id][auctionInfo.auctionId];
-
-        uint256 metaverseId = auction.metaverseId;
-        uint256 amount = auction.amount;
-
-        Bidding[] storage bs = biddings[auctionVerificationID];
-        uint256 bestBiddingId = bs.length.sub(1);
-        Bidding storage bestBidding = bs[bestBiddingId];
-
-        address bestBidder = bestBidding.bidder;
-        uint256 bestBiddingPrice = bestBidding.price;
-
-        require(block.number >= auction.endBlock);
-
-        _itemTransfer(metaverseId, item, id, amount, address(this), bestBidder);
-        _distributeReward(metaverseId, bestBidder, auction.seller, bestBiddingPrice);
-
-        _removeUserBiddingInfo(bestBidder, auctionVerificationID);
-        delete biddings[auctionVerificationID];
-        _removeAuction(auctionVerificationID);
-
-        emit Claim(metaverseId, item, id, bestBidder, amount, bestBiddingPrice, auctionVerificationID, bestBiddingId);
     }
 
     //"cancel" functions with ownership
@@ -1065,35 +634,6 @@ contract ItemStore is Ownable, IItemStore {
             emit CancelOfferByOwner(metaverseId, item, id, offerVerificationIDs[i]);
 
             _removeOffer(offerVerificationIDs[i]);
-        }
-    }
-
-    function cancelAuctionByOwner(bytes32[] calldata auctionVerificationIDs) external onlyOwner {
-        for (uint256 i = 0; i < auctionVerificationIDs.length; i++) {
-            AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationIDs[i]];
-            address item = auctionInfo.item;
-            uint256 id = auctionInfo.id;
-
-            Auction storage auction = auctions[item][id][auctionInfo.auctionId];
-            Bidding[] storage bs = biddings[auctionVerificationIDs[i]];
-            uint256 biddingLength = bs.length;
-            if (biddingLength > 0) {
-                Bidding storage lastBidding = bs[biddingLength - 1];
-                address lastBidder = lastBidding.bidder;
-                uint256 lastMileage = lastBidding.mileage;
-                mix.transfer(lastBidder, lastBidding.price.sub(lastMileage));
-                if (lastMileage > 0) {
-                    mix.approve(address(mileage), lastMileage);
-                    mileage.charge(lastBidder, lastMileage);
-                }
-                _removeUserBiddingInfo(lastBidder, auctionVerificationIDs[i]);
-                delete biddings[auctionVerificationIDs[i]];
-            }
-            uint256 metaverseId = auction.metaverseId;
-            _itemTransfer(metaverseId, item, id, auction.amount, address(this), auction.seller);
-            _removeAuction(auctionVerificationIDs[i]);
-            emit CancelAuction(metaverseId, item, id, auctionVerificationIDs[i]);
-            emit CancelAuctionByOwner(metaverseId, item, id, auctionVerificationIDs[i]);
         }
     }
 }
