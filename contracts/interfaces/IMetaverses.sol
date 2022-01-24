@@ -66,6 +66,16 @@ interface IMetaverses {
 
     function banned(uint256 id) external view returns (bool);
 
+    function itemProposals(uint256 index)
+        external
+        view
+        returns (
+            uint256 id,
+            address item,
+            ItemType itemType,
+            address proposer
+        );
+
     function proposeItem(
         uint256 id,
         address item,
