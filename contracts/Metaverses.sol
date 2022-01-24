@@ -253,12 +253,18 @@ contract Metaverses is Ownable, IMetaverses {
 
     function setItemEnumerable(uint256 id, address item, bool enumerable) onlyManager(id) public {
         require(id < metaverseCount);
+        require(itemAdded[id][item]);
+        if(itemTypes[id][item] == ItemType.ERC1155) {
+            require(!enumerable);
+        }
+
         itemEnumerables[id][item] = enumerable;
         emit SetItemEnumerable(id, item, enumerable);
     }
 
     function setItemTotalSupply(uint256 id, address item, uint256 totalSupply) onlyManager(id) external {
         require(id < metaverseCount);
+        require(itemAdded[id][item]);
         if (itemEnumerables[id][item]) {
             setItemEnumerable(id, item, false);
         }
@@ -267,7 +273,7 @@ contract Metaverses is Ownable, IMetaverses {
     }
 
     function getItemTotalSupply(uint256 id, address item) view external returns (uint256) {
-        if (itemEnumerables[id][item]) {
+        if (itemEnumerables[id][item] && itemTypes[id][item] == ItemType.ERC721) {
             return IKIP17Enumerable(item).totalSupply();
         } else {
             return itemTotalSupplies[id][item];
