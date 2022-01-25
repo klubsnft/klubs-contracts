@@ -339,6 +339,7 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
             Sale storage sale = sales[item][id][saleInfo.saleId];
             require(sale.seller == msg.sender);
             require(sale.unitPrice != unitPrices[i]);
+            require(unitPrices[i] > 0);
 
             sale.unitPrice = unitPrices[i];
             emit ChangeSellPrice(sale.metaverseId, item, id, unitPrices[i], saleVerificationIDs[i]);
