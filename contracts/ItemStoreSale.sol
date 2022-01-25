@@ -407,7 +407,7 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
             if (_mileage > 0) mileage.use(msg.sender, _mileage);
             _distributeReward(metaverseId, msg.sender, seller, price);
 
-            userOnSaleAmounts[msg.sender][saleInfo.item][saleInfo.id] = userOnSaleAmounts[msg.sender][saleInfo.item][saleInfo.id].sub(amount);
+            userOnSaleAmounts[seller][saleInfo.item][saleInfo.id] = userOnSaleAmounts[seller][saleInfo.item][saleInfo.id].sub(amount);
 
             bool isFulfilled = false;
             if (amountLeft == 0) {
