@@ -372,3 +372,148 @@ describe("Metaverses", () => {
         await expect(metaverses.setItemEnumerable(0, item1155.address, true)).to.be.reverted;
     });
 });
+
+describe("ItemStore", () => {
+    beforeEach(async () => {
+        await ethers.provider.send("hardhat_reset", []);
+    });
+
+    describe.only("ItemStoreCommon", function () {
+        it("should be that basic functions work well", async function () {
+            const { deployer, alice, bob, carol, dan, metaverses, itemStoreCommon, erc721, erc1155 } =
+                await setupTest();
+            expect(await itemStoreCommon.fee()).to.be.equal(250);
+            await itemStoreCommon.setFee(123);
+            expect(await itemStoreCommon.fee()).to.be.equal(123);
+
+            expect(await itemStoreCommon.feeReceiver()).to.be.equal(deployer.address);
+            await itemStoreCommon.setFeeReceiver(alice.address);
+            expect(await itemStoreCommon.feeReceiver()).to.be.equal(alice.address);
+
+            expect(await itemStoreCommon.auctionExtensionInterval()).to.be.equal(300);
+            await itemStoreCommon.setAuctionExtensionInterval(12345);
+            expect(await itemStoreCommon.auctionExtensionInterval()).to.be.equal(12345);
+
+            expect(await itemStoreCommon.isBannedUser(dan.address)).to.be.false;
+            await itemStoreCommon.banUser(dan.address);
+            expect(await itemStoreCommon.isBannedUser(dan.address)).to.be.true;
+            await itemStoreCommon.unbanUser(dan.address);
+            expect(await itemStoreCommon.isBannedUser(dan.address)).to.be.false;
+
+            await metaverses.addMetaverse("game0");
+            await metaverses.addMetaverse("game1");
+
+            expect(await itemStoreCommon.isMetaverseWhitelisted(1)).to.be.true;
+            expect(await itemStoreCommon.isMetaverseWhitelisted(2)).to.be.false;
+
+            await metaverses.ban(1);
+            expect(await itemStoreCommon.isMetaverseWhitelisted(1)).to.be.false;
+
+            expect(await itemStoreCommon.isMetaverseWhitelisted(0)).to.be.true;
+
+            expect(await itemStoreCommon.isItemWhitelisted(0, erc721.address)).to.be.false;
+            await metaverses.addItem(0, erc721.address, 1, "{}");
+            expect(await itemStoreCommon.isItemWhitelisted(0, erc721.address)).to.be.true;
+
+            await metaverses.addItem(1, erc721.address, 1, "{}");
+            expect(await itemStoreCommon.isItemWhitelisted(1, erc721.address)).to.be.false;
+
+            await erc721.massMint2(alice.address, 0, 3);
+            await erc721.connect(alice).setApprovalForAll(itemStoreCommon.address, true);
+            await erc721.connect(bob).setApprovalForAll(itemStoreCommon.address, true);
+            await erc721.connect(carol).setApprovalForAll(itemStoreCommon.address, true);
+            await erc721.connect(dan).setApprovalForAll(itemStoreCommon.address, true);
+
+            await expect(
+                itemStoreCommon
+                    .connect(alice)
+                    .batchTransfer(
+                        [0, 0, 0],
+                        [erc721.address, erc721.address, erc721.address],
+                        [0, 1, 2],
+                        [bob.address, carol.address, dan.address],
+                        [1, 1, 2]
+                    )
+            ).to.be.reverted;
+
+            await itemStoreCommon
+                .connect(alice)
+                .batchTransfer(
+                    [0, 0, 0],
+                    [erc721.address, erc721.address, erc721.address],
+                    [0, 1, 2],
+                    [bob.address, carol.address, dan.address],
+                    [1, 1, 1]
+                );
+            expect(await erc721.ownerOf(0)).to.be.equal(bob.address);
+            expect(await erc721.ownerOf(1)).to.be.equal(carol.address);
+            expect(await erc721.ownerOf(2)).to.be.equal(dan.address);
+
+            await expect(itemStoreCommon.connect(bob).batchTransfer([0], [erc721.address], [0], [alice.address], [0]))
+                .to.be.reverted;
+            await expect(itemStoreCommon.connect(bob).batchTransfer([0], [erc721.address], [0], [alice.address], [2]))
+                .to.be.reverted;
+            expect(await itemStoreCommon.connect(bob).batchTransfer([0], [erc721.address], [0], [alice.address], [1]))
+                .to.emit(erc721, "Transfer")
+                .withArgs(bob.address, alice.address, 0);
+            expect(await itemStoreCommon.connect(carol).batchTransfer([0], [erc721.address], [1], [alice.address], [1]))
+                .to.emit(erc721, "Transfer")
+                .withArgs(carol.address, alice.address, 1);
+
+            await itemStoreCommon.banUser(dan.address);
+            await expect(itemStoreCommon.connect(dan).batchTransfer([0], [erc721.address], [2], [alice.address], [1]))
+                .to.be.reverted;
+
+            //1155
+            await metaverses.addItem(0, erc1155.address, 0, "{}");
+            await erc1155.create(1, 0, "");
+            await erc1155.create(2, 0, "");
+            await erc1155.mintBatch(alice.address, [1, 2], [11, 22]);
+            await erc1155.connect(alice).setApprovalForAll(itemStoreCommon.address, true);
+            await erc1155.connect(bob).setApprovalForAll(itemStoreCommon.address, true);
+            await erc1155.connect(carol).setApprovalForAll(itemStoreCommon.address, true);
+            await erc1155.connect(dan).setApprovalForAll(itemStoreCommon.address, true);
+
+            await expect(
+                itemStoreCommon
+                    .connect(alice)
+                    .batchTransfer(
+                        [0, 0, 0],
+                        [erc1155.address, erc1155.address, erc1155.address],
+                        [1, 1, 2],
+                        [bob.address, carol.address, dan.address],
+                        [0, 2, 4]
+                    )
+            ).to.be.reverted;
+
+            await itemStoreCommon
+                .connect(alice)
+                .batchTransfer(
+                    [0, 0, 0],
+                    [erc1155.address, erc1155.address, erc1155.address],
+                    [1, 1, 2],
+                    [bob.address, carol.address, dan.address],
+                    [1, 2, 4]
+                );
+            expect(await erc1155.balanceOf(bob.address, 1)).to.be.equal(1);
+            expect(await erc1155.balanceOf(carol.address, 1)).to.be.equal(2);
+            expect(await erc1155.balanceOf(dan.address, 2)).to.be.equal(4);
+
+            await expect(itemStoreCommon.connect(bob).batchTransfer([0], [erc1155.address], [1], [alice.address], [0]))
+                .to.be.reverted;
+            expect(await itemStoreCommon.connect(bob).batchTransfer([0], [erc1155.address], [1], [alice.address], [1]))
+                .to.emit(erc1155, "TransferSingle")
+                .withArgs(itemStoreCommon.address, bob.address, alice.address, 1, 1);
+            expect(
+                await itemStoreCommon.connect(carol).batchTransfer([0], [erc1155.address], [1], [alice.address], [1])
+            )
+                .to.emit(erc1155, "TransferSingle")
+                .withArgs(itemStoreCommon.address, carol.address, alice.address, 1, 1);
+
+            await itemStoreCommon.banUser(carol.address);
+            await expect(
+                itemStoreCommon.connect(carol).batchTransfer([0], [erc1155.address], [1], [alice.address], [1])
+            ).to.be.reverted;
+        });
+    });
+});
