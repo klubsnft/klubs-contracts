@@ -258,14 +258,9 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
         if (!commonData.isItemWhitelisted(metaverseId, item)) return false;
 
         if (item._isERC1155(commonData.metaverses(), metaverseId)) {
-            if (amount == 0) return false;
-            if (userOnSaleAmounts[seller][item][id].add(amount) > IKIP37(item).balanceOf(seller, id)) return false;
-            return true;
+            return (amount > 0) && (userOnSaleAmounts[seller][item][id].add(amount) <= IKIP37(item).balanceOf(seller, id));
         } else {
-            if (amount != 1) return false;
-            if (IKIP17(item).ownerOf(id) != seller) return false;
-            if (userOnSaleAmounts[seller][item][id] != 0) return false;
-            return true;
+            return (amount == 1) && (IKIP17(item).ownerOf(id) == seller) && (userOnSaleAmounts[seller][item][id] == 0);
         }
     }
 
@@ -480,12 +475,9 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
     ) public view returns (bool) {
         if (!commonData.isItemWhitelisted(metaverseId, item)) return false;
         if (item._isERC1155(commonData.metaverses(), metaverseId)) {
-            if (amount == 0) return false;
-            return true;
+            return (amount > 0);
         } else {
-            if (amount != 1) return false;
-            if (IKIP17(item).ownerOf(id) == offeror) return false;
-            return true;
+            return (amount == 1) && (IKIP17(item).ownerOf(id) != offeror);
         }
     }
 

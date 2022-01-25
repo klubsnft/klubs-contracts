@@ -219,13 +219,9 @@ contract ItemStoreAuction is Ownable, IItemStoreAuction {
         if (!commonData.isItemWhitelisted(metaverseId, item)) return false;
 
         if (item._isERC1155(commonData.metaverses(), metaverseId)) {
-            if (amount == 0) return false;
-            if (IKIP37(item).balanceOf(seller, id) < amount) return false;
-            return true;
+            return (amount != 0) && (IKIP37(item).balanceOf(seller, id) >= amount);
         } else {
-            if (amount != 1) return false;
-            if (IKIP17(item).ownerOf(id) != seller) return false;
-            return true;
+            return (amount == 1) && (IKIP17(item).ownerOf(id) == seller);
         }
     }
 
@@ -347,11 +343,9 @@ contract ItemStoreAuction is Ownable, IItemStoreAuction {
         Bidding[] storage bs = biddings[auctionVerificationID];
         uint256 biddingLength = bs.length;
         if (biddingLength == 0) {
-            if (auction.startTotalPrice > price) return false;
-            return true;
+            return (auction.startTotalPrice <= price);
         } else {
-            if (bs[biddingLength - 1].price >= price) return false;
-            return true;
+            return (bs[biddingLength - 1].price < price);
         }
     }
 

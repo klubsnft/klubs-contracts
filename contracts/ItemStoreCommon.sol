@@ -48,8 +48,7 @@ contract ItemStoreCommon is Ownable, IItemStoreCommon {
     }
 
     function isItemWhitelisted(uint256 metaverseId, address item) public view returns (bool) {
-        if (!isMetaverseWhitelisted(metaverseId)) return false;
-        return (metaverses.itemAdded(metaverseId, item));
+        return (isMetaverseWhitelisted(metaverseId) && metaverses.itemAdded(metaverseId, item));
     }
 
     mapping(address => bool) public isBannedUser;
