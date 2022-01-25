@@ -33,16 +33,6 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
 
         Sale storage sale = sales[item][id][saleId];
 
-        //delete sales
-        uint256 lastSaleId = sales[item][id].length.sub(1);
-        Sale memory lastSale = sales[item][id][lastSaleId];
-        if (saleId != lastSaleId) {
-            sales[item][id][saleId] = lastSale;
-            _saleInfo[lastSale.verificationID].saleId = saleId;
-        }
-        sales[item][id].length--;
-        delete _saleInfo[saleVerificationID];
-
         //delete onSales
         uint256 lastIndex = onSales[item].length.sub(1);
         uint256 index = _onSalesIndex[saleVerificationID];
@@ -83,6 +73,16 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
         if (amount > 0) {
             userOnSaleAmounts[seller][item][id] = userOnSaleAmounts[seller][item][id].sub(amount);
         }
+
+        //delete sales
+        uint256 lastSaleId = sales[item][id].length.sub(1);
+        Sale memory lastSale = sales[item][id][lastSaleId];
+        if (saleId != lastSaleId) {
+            sales[item][id][saleId] = lastSale;
+            _saleInfo[lastSale.verificationID].saleId = saleId;
+        }
+        sales[item][id].length--;
+        delete _saleInfo[saleVerificationID];
     }
 
     function _removeOffer(bytes32 offerVerificationID) private {
@@ -92,16 +92,6 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
         uint256 offerId = offerInfo.offerId;
 
         Offer storage offer = offers[item][id][offerId];
-
-        //delete offers
-        uint256 lastOfferId = offers[item][id].length.sub(1);
-        Offer memory lastOffer = offers[item][id][lastOfferId];
-        if (offerId != lastOfferId) {
-            offers[item][id][offerId] = lastOffer;
-            _offerInfo[lastOffer.verificationID].offerId = offerId;
-        }
-        offers[item][id].length--;
-        delete _offerInfo[offerVerificationID];
 
         //delete userOfferInfo
         address offeror = offer.offeror;
@@ -114,6 +104,16 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
         }
         userOfferInfo[offeror].length--;
         delete _userOfferIndex[offerVerificationID];
+
+        //delete offers
+        uint256 lastOfferId = offers[item][id].length.sub(1);
+        Offer memory lastOffer = offers[item][id][lastOfferId];
+        if (offerId != lastOfferId) {
+            offers[item][id][offerId] = lastOffer;
+            _offerInfo[lastOffer.verificationID].offerId = offerId;
+        }
+        offers[item][id].length--;
+        delete _offerInfo[offerVerificationID];
     }
 
     function _distributeReward(

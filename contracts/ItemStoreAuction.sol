@@ -33,16 +33,6 @@ contract ItemStoreAuction is Ownable, IItemStoreAuction {
 
         Auction storage auction = auctions[item][id][auctionId];
 
-        //delete auctions
-        uint256 lastAuctionId = auctions[item][id].length.sub(1);
-        Auction memory lastAuction = auctions[item][id][lastAuctionId];
-        if (auctionId != lastAuctionId) {
-            auctions[item][id][auctionId] = lastAuction;
-            _auctionInfo[lastAuction.verificationID].auctionId = auctionId;
-        }
-        auctions[item][id].length--;
-        delete _auctionInfo[auctionVerificationID];
-
         //delete onAuctions
         uint256 lastIndex = onAuctions[item].length.sub(1);
         uint256 index = _onAuctionsIndex[auctionVerificationID];
@@ -77,6 +67,16 @@ contract ItemStoreAuction is Ownable, IItemStoreAuction {
         }
         auctionsOnMetaverse[metaverseId].length--;
         delete _auctionsOnMvIndex[auctionVerificationID];
+
+        //delete auctions
+        uint256 lastAuctionId = auctions[item][id].length.sub(1);
+        Auction memory lastAuction = auctions[item][id][lastAuctionId];
+        if (auctionId != lastAuctionId) {
+            auctions[item][id][auctionId] = lastAuction;
+            _auctionInfo[lastAuction.verificationID].auctionId = auctionId;
+        }
+        auctions[item][id].length--;
+        delete _auctionInfo[auctionVerificationID];
     }
 
     function _distributeReward(
