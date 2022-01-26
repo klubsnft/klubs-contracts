@@ -7,6 +7,10 @@ import "../klaytn-contracts/token/KIP17/KIP17Burnable.sol";
 import "../klaytn-contracts/token/KIP17/KIP17Pausable.sol";
 
 contract TestERC721 is KIP17Full("TEST", "T"), KIP17Mintable, KIP17Burnable, KIP17Pausable, Ownable {
+    function isTokenExistent(uint256 tokenId) external view returns (bool) {
+        return _exists(tokenId);
+    }
+
     function bulkTransfer(address[] calldata tos, uint256[] calldata ids) external {
         uint256 length = ids.length;
         for (uint256 i = 0; i < length; i++) {
