@@ -452,69 +452,6 @@ contract ItemStoreAuction is Ownable, IItemStoreAuction {
         _removeAuction(auctionVerificationID);
 
         emit Claim(metaverseId, item, id, bestBidder, amount, bestBiddingPrice, auctionVerificationID, bestBiddingId);
-
-        {//되는거
-        //     AuctionInfo memory auctionInfo = _auctionInfo[auctionVerificationID];
-        // // address item = auctionInfo.item;
-        // // uint256 id = auctionInfo.id;
-
-        // Auction storage auction = auctions[auctionInfo.item][auctionInfo.id][auctionInfo.auctionId];
-
-        // uint256 metaverseId = auction.metaverseId;
-        // uint256 amount = auction.amount;
-
-        // uint256 bestBiddingId;
-        // address bestBidder;
-        // uint256 bestBiddingPrice;
-        // {
-        //     Bidding[] storage bs = biddings[auctionVerificationID];
-        //     bestBiddingId = bs.length.sub(1);
-        //     Bidding storage bestBidding = bs[bestBiddingId];
-
-        //     bestBidder = bestBidding.bidder;
-        //     bestBiddingPrice = bestBidding.price;
-        // }
-        // require(block.number >= auction.endBlock);
-
-        // IMetaverses metaverses = commonData.metaverses();
-        // auctionInfo.item._transferItems(metaverses, metaverseId, auctionInfo.id, amount, address(this), bestBidder);
-        // _distributeReward(metaverseId, bestBidder, auction.seller, bestBiddingPrice);
-
-        // _removeUserBiddingInfo(bestBidder, auctionVerificationID);
-        // delete biddings[auctionVerificationID];
-        // _removeAuction(auctionVerificationID);
-
-        // emit Claim(metaverseId, auctionInfo.item, auctionInfo.id, bestBidder, amount, bestBiddingPrice, auctionVerificationID, bestBiddingId);
-        }
-        {
-        // AuctionInfo storage auctionInfo = _auctionInfo[auctionVerificationID];
-        // address item = auctionInfo.item;
-        // uint256 id = auctionInfo.id;
-
-        // Auction storage auction = auctions[item][id][auctionInfo.auctionId];
-
-        // uint256 metaverseId = auction.metaverseId;
-        // uint256 amount = auction.amount;
-
-        // Bidding[] storage bs = biddings[auctionVerificationID];
-        // uint256 bestBiddingId = bs.length.sub(1);
-        // Bidding storage bestBidding = bs[bestBiddingId];
-
-        // address bestBidder = bestBidding.bidder;
-        // uint256 bestBiddingPrice = bestBidding.price;
-
-        // require(block.number >= auction.endBlock);
-
-        // IMetaverses metaverses = commonData.metaverses();
-        // item._transferItems(metaverses, metaverseId, id, amount, address(this), bestBidder);
-        // _distributeReward(metaverseId, bestBidder, auction.seller, bestBiddingPrice);
-
-        // _removeUserBiddingInfo(bestBidder, auctionVerificationID);
-        // delete biddings[auctionVerificationID];
-        // _removeAuction(auctionVerificationID);
-
-        // emit Claim(metaverseId, item, id, bestBidder, amount, bestBiddingPrice, auctionVerificationID, bestBiddingId);
-        }
     }
 
     //"cancel" functions with ownership
