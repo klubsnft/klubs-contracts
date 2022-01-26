@@ -516,6 +516,8 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
             })
         );
 
+        _offerInfo[verificationID] = OfferInfo({item: item, id: id, offerId: offerId});
+
         _userOfferIndex[verificationID] = userOfferInfo[msg.sender].length;
         userOfferInfo[msg.sender].push(verificationID);
 
