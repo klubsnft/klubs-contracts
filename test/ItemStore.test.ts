@@ -9,12 +9,18 @@ import {
     TestERC1155,
 } from "../typechain";
 import { mine, mineTo, autoMining, getBlock } from "./utils/blockchain";
-import { VerID, UserOnSaleAmount, Sale, makeSaleVerificationID } from "./utils/itemStoreUtils";
+import {
+    VerID,
+    UserOnSaleAmount,
+    Sale,
+    makeSaleVerificationID,
+    Offer,
+    makeOfferVerificationID,
+} from "./utils/itemStoreUtils";
 
 import { ethers } from "hardhat";
 import { assert, expect } from "chai";
 import { BigNumber, BigNumberish, Contract } from "ethers";
-import { solidityKeccak256 } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const { constants } = ethers;
@@ -521,30 +527,30 @@ describe("ItemStore", () => {
     });
 
     describe("ItemStoreSale", function () {
-        describe.only("Sale", function () {
+        describe("Sale", function () {
             it("should be that sell function with ERC721 tokens works properly", async function () {
                 const { alice, bob, carol, dan, metaverses, itemStoreSale, Factory721 } = await setupTest();
 
                 await metaverses.addMetaverse("game0");
-                const item721_0 = (await Factory721.deploy()) as TestERC721;
-                await item721_0.mint(alice.address, 0);
+                const item721 = (await Factory721.deploy()) as TestERC721;
+                await item721.mint(alice.address, 0);
 
-                expect(await itemStoreSale.canSell(alice.address, 0, item721_0.address, 0, 1)).to.be.false;
-                await metaverses.addItem(0, item721_0.address, 1, "");
-                expect(await itemStoreSale.canSell(alice.address, 0, item721_0.address, 0, 1)).to.be.true;
-                expect(await itemStoreSale.canSell(alice.address, 0, item721_0.address, 0, 0)).to.be.false;
-                expect(await itemStoreSale.canSell(alice.address, 0, item721_0.address, 0, 2)).to.be.false;
+                expect(await itemStoreSale.canSell(alice.address, 0, item721.address, 0, 1)).to.be.false;
+                await metaverses.addItem(0, item721.address, 1, "");
+                expect(await itemStoreSale.canSell(alice.address, 0, item721.address, 0, 1)).to.be.true;
+                expect(await itemStoreSale.canSell(alice.address, 0, item721.address, 0, 0)).to.be.false;
+                expect(await itemStoreSale.canSell(alice.address, 0, item721.address, 0, 2)).to.be.false;
 
-                expect(await itemStoreSale.canSell(bob.address, 0, item721_0.address, 0, 1)).to.be.false;
+                expect(await itemStoreSale.canSell(bob.address, 0, item721.address, 0, 1)).to.be.false;
 
-                await expect(itemStoreSale.connect(alice).sell([0], [item721_0.address], [0], [1], [0], [true])).to.be
+                await expect(itemStoreSale.connect(alice).sell([0], [item721.address], [0], [1], [0], [true])).to.be
                     .reverted; //price0
 
                 const saleVID0 = makeSaleVerificationID(
                     {
                         seller: alice.address,
                         metaverseId: 0,
-                        item: item721_0.address,
+                        item: item721.address,
                         id: 0,
                         amount: 1,
                         unitPrice: 100,
@@ -554,37 +560,37 @@ describe("ItemStore", () => {
                 );
                 {
                     await expect(itemStoreSale.getSaleInfo(saleVID0)).to.be.reverted;
-                    expect(await itemStoreSale.salesCount(item721_0.address, 0)).to.be.equal(0);
-                    expect(await itemStoreSale.onSalesCount(item721_0.address)).to.be.equal(0);
+                    expect(await itemStoreSale.salesCount(item721.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.onSalesCount(item721.address)).to.be.equal(0);
                     expect(await itemStoreSale.userSellInfoLength(alice.address)).to.be.equal(0);
                     expect(await itemStoreSale.salesOnMetaverseLength(0)).to.be.equal(0);
 
-                    expect(await itemStoreSale.userOnSaleAmounts(alice.address, item721_0.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.userOnSaleAmounts(alice.address, item721.address, 0)).to.be.equal(0);
                 }
-                await itemStoreSale.connect(alice).sell([0], [item721_0.address], [0], [1], [100], [true]);
+                await itemStoreSale.connect(alice).sell([0], [item721.address], [0], [1], [100], [true]);
                 {
-                    expect((await itemStoreSale.getSaleInfo(saleVID0)).item).to.be.equal(item721_0.address);
-                    expect(await itemStoreSale.salesCount(item721_0.address, 0)).to.be.equal(1);
-                    expect(await itemStoreSale.onSalesCount(item721_0.address)).to.be.equal(1);
+                    expect((await itemStoreSale.getSaleInfo(saleVID0)).item).to.be.equal(item721.address);
+                    expect(await itemStoreSale.salesCount(item721.address, 0)).to.be.equal(1);
+                    expect(await itemStoreSale.onSalesCount(item721.address)).to.be.equal(1);
                     expect(await itemStoreSale.userSellInfoLength(alice.address)).to.be.equal(1);
                     expect(await itemStoreSale.salesOnMetaverseLength(0)).to.be.equal(1);
 
-                    expect(await itemStoreSale.onSales(item721_0.address, 0)).to.be.equal(saleVID0);
+                    expect(await itemStoreSale.onSales(item721.address, 0)).to.be.equal(saleVID0);
                     expect(await itemStoreSale.userSellInfo(alice.address, 0)).to.be.equal(saleVID0);
                     expect(await itemStoreSale.salesOnMetaverse(0, 0)).to.be.equal(saleVID0);
 
-                    expect(await itemStoreSale.userOnSaleAmounts(alice.address, item721_0.address, 0)).to.be.equal(1);
+                    expect(await itemStoreSale.userOnSaleAmounts(alice.address, item721.address, 0)).to.be.equal(1);
                 }
-                expect(await item721_0.ownerOf(0)).to.be.equal(alice.address);
-                expect(await itemStoreSale.canSell(alice.address, 0, item721_0.address, 0, 1)).to.be.false;
+                expect(await item721.ownerOf(0)).to.be.equal(alice.address);
+                expect(await itemStoreSale.canSell(alice.address, 0, item721.address, 0, 1)).to.be.false;
 
-                await item721_0.mint(bob.address, 1);
-                expect(await itemStoreSale.canSell(bob.address, 0, item721_0.address, 1, 1)).to.be.true;
+                await item721.mint(bob.address, 1);
+                expect(await itemStoreSale.canSell(bob.address, 0, item721.address, 1, 1)).to.be.true;
                 const saleVID1 = makeSaleVerificationID(
                     {
                         seller: bob.address,
                         metaverseId: 0,
-                        item: item721_0.address,
+                        item: item721.address,
                         id: 1,
                         amount: 1,
                         unitPrice: 300,
@@ -594,55 +600,55 @@ describe("ItemStore", () => {
                 );
                 {
                     await expect(itemStoreSale.getSaleInfo(saleVID1)).to.be.reverted;
-                    expect(await itemStoreSale.salesCount(item721_0.address, 1)).to.be.equal(0);
-                    expect(await itemStoreSale.onSalesCount(item721_0.address)).to.be.equal(1);
+                    expect(await itemStoreSale.salesCount(item721.address, 1)).to.be.equal(0);
+                    expect(await itemStoreSale.onSalesCount(item721.address)).to.be.equal(1);
                     expect(await itemStoreSale.userSellInfoLength(bob.address)).to.be.equal(0);
                     expect(await itemStoreSale.salesOnMetaverseLength(0)).to.be.equal(1);
 
-                    expect(await itemStoreSale.userOnSaleAmounts(bob.address, item721_0.address, 1)).to.be.equal(0);
+                    expect(await itemStoreSale.userOnSaleAmounts(bob.address, item721.address, 1)).to.be.equal(0);
                 }
-                await itemStoreSale.connect(bob).sell([0], [item721_0.address], [1], [1], [300], [false]);
+                await itemStoreSale.connect(bob).sell([0], [item721.address], [1], [1], [300], [false]);
                 {
-                    expect((await itemStoreSale.getSaleInfo(saleVID1)).item).to.be.equal(item721_0.address);
-                    expect(await itemStoreSale.salesCount(item721_0.address, 1)).to.be.equal(1);
-                    expect(await itemStoreSale.onSalesCount(item721_0.address)).to.be.equal(2);
+                    expect((await itemStoreSale.getSaleInfo(saleVID1)).item).to.be.equal(item721.address);
+                    expect(await itemStoreSale.salesCount(item721.address, 1)).to.be.equal(1);
+                    expect(await itemStoreSale.onSalesCount(item721.address)).to.be.equal(2);
                     expect(await itemStoreSale.userSellInfoLength(bob.address)).to.be.equal(1);
                     expect(await itemStoreSale.salesOnMetaverseLength(0)).to.be.equal(2);
 
-                    expect(await itemStoreSale.onSales(item721_0.address, 1)).to.be.equal(saleVID1);
+                    expect(await itemStoreSale.onSales(item721.address, 1)).to.be.equal(saleVID1);
                     expect(await itemStoreSale.userSellInfo(bob.address, 0)).to.be.equal(saleVID1);
                     expect(await itemStoreSale.salesOnMetaverse(0, 1)).to.be.equal(saleVID1);
 
-                    expect(await itemStoreSale.userOnSaleAmounts(bob.address, item721_0.address, 1)).to.be.equal(1);
+                    expect(await itemStoreSale.userOnSaleAmounts(bob.address, item721.address, 1)).to.be.equal(1);
                 }
-                expect(await item721_0.ownerOf(1)).to.be.equal(bob.address);
-                expect(await itemStoreSale.canSell(bob.address, 0, item721_0.address, 1, 1)).to.be.false;
+                expect(await item721.ownerOf(1)).to.be.equal(bob.address);
+                expect(await itemStoreSale.canSell(bob.address, 0, item721.address, 1, 1)).to.be.false;
 
                 await expect(itemStoreSale.connect(bob).changeSellPrice([saleVID0], [13])).to.be.reverted;
                 await itemStoreSale.connect(alice).changeSellPrice([saleVID0], [13]);
-                expect((await itemStoreSale.sales(item721_0.address, 0, 0)).unitPrice).to.be.equal(13);
+                expect((await itemStoreSale.sales(item721.address, 0, 0)).unitPrice).to.be.equal(13);
                 await expect(itemStoreSale.connect(alice).changeSellPrice([saleVID0], [13])).to.be.reverted;
                 await expect(itemStoreSale.connect(alice).changeSellPrice([saleVID0], [0])).to.be.reverted;
                 await itemStoreSale.connect(alice).changeSellPrice([saleVID0], [15]);
-                expect((await itemStoreSale.sales(item721_0.address, 0, 0)).unitPrice).to.be.equal(15);
+                expect((await itemStoreSale.sales(item721.address, 0, 0)).unitPrice).to.be.equal(15);
 
                 await expect(itemStoreSale.connect(bob).cancelSale([saleVID0])).to.be.reverted;
                 await itemStoreSale.connect(alice).cancelSale([saleVID0]);
                 {
                     await expect(itemStoreSale.getSaleInfo(saleVID0)).to.be.reverted;
-                    expect(await itemStoreSale.salesCount(item721_0.address, 0)).to.be.equal(0);
-                    expect(await itemStoreSale.onSalesCount(item721_0.address)).to.be.equal(1);
+                    expect(await itemStoreSale.salesCount(item721.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.onSalesCount(item721.address)).to.be.equal(1);
                     expect(await itemStoreSale.userSellInfoLength(alice.address)).to.be.equal(0);
                     expect(await itemStoreSale.salesOnMetaverseLength(0)).to.be.equal(1);
 
-                    expect(await itemStoreSale.onSales(item721_0.address, 0)).to.be.equal(saleVID1);
+                    expect(await itemStoreSale.onSales(item721.address, 0)).to.be.equal(saleVID1);
                     await expect(itemStoreSale.userSellInfo(alice.address, 0)).to.be.reverted;
                     expect(await itemStoreSale.salesOnMetaverse(0, 0)).to.be.equal(saleVID1);
 
-                    expect(await itemStoreSale.userOnSaleAmounts(alice.address, item721_0.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.userOnSaleAmounts(alice.address, item721.address, 0)).to.be.equal(0);
                 }
-                expect(await item721_0.ownerOf(0)).to.be.equal(alice.address);
-                expect(await itemStoreSale.canSell(alice.address, 0, item721_0.address, 0, 1)).to.be.true;
+                expect(await item721.ownerOf(0)).to.be.equal(alice.address);
+                expect(await itemStoreSale.canSell(alice.address, 0, item721.address, 0, 1)).to.be.true;
             });
 
             it("should be that buy function with ERC721 tokens works properly", async function () {
@@ -650,16 +656,16 @@ describe("ItemStore", () => {
                     await setupTest();
 
                 await metaverses.addMetaverse("game0");
-                const item721_0 = (await Factory721.deploy()) as TestERC721;
-                await item721_0.mint(alice.address, 0);
-                await item721_0.mint(bob.address, 1);
-                await metaverses.addItem(0, item721_0.address, 1, "");
+                const item721 = (await Factory721.deploy()) as TestERC721;
+                await item721.mint(alice.address, 0);
+                await item721.mint(bob.address, 1);
+                await metaverses.addItem(0, item721.address, 1, "");
 
                 const saleVID0 = makeSaleVerificationID(
                     {
                         seller: alice.address,
                         metaverseId: 0,
-                        item: item721_0.address,
+                        item: item721.address,
                         id: 0,
                         amount: 1,
                         unitPrice: 100,
@@ -667,13 +673,13 @@ describe("ItemStore", () => {
                     },
                     0
                 );
-                await itemStoreSale.connect(alice).sell([0], [item721_0.address], [0], [1], [100], [true]);
+                await itemStoreSale.connect(alice).sell([0], [item721.address], [0], [1], [100], [true]);
 
                 const saleVID1 = makeSaleVerificationID(
                     {
                         seller: bob.address,
                         metaverseId: 0,
-                        item: item721_0.address,
+                        item: item721.address,
                         id: 1,
                         amount: 1,
                         unitPrice: 300,
@@ -681,7 +687,7 @@ describe("ItemStore", () => {
                     },
                     0
                 );
-                await itemStoreSale.connect(bob).sell([0], [item721_0.address], [1], [1], [300], [false]);
+                await itemStoreSale.connect(bob).sell([0], [item721.address], [1], [1], [300], [false]);
 
                 await expect(itemStoreSale.connect(carol).buy([HashZero], [1], [100], [0])).to.be.reverted;
                 await expect(itemStoreSale.connect(alice).buy([saleVID0], [1], [100], [0])).to.be.reverted;
@@ -690,7 +696,7 @@ describe("ItemStore", () => {
 
                 await expect(itemStoreSale.connect(carol).buy([saleVID0], [1], [100], [0])).to.be.reverted;
 
-                await item721_0.connect(alice).setApprovalForAll(itemStoreSale.address, true);
+                await item721.connect(alice).setApprovalForAll(itemStoreSale.address, true);
                 await expect(() => itemStoreSale.connect(carol).buy([saleVID0], [1], [100], [0])).changeTokenBalances(
                     mix,
                     [deployer, alice, carol],
@@ -698,23 +704,23 @@ describe("ItemStore", () => {
                 );
                 {
                     await expect(itemStoreSale.getSaleInfo(saleVID0)).to.be.reverted;
-                    expect(await itemStoreSale.salesCount(item721_0.address, 0)).to.be.equal(0);
-                    expect(await itemStoreSale.onSalesCount(item721_0.address)).to.be.equal(1);
+                    expect(await itemStoreSale.salesCount(item721.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.onSalesCount(item721.address)).to.be.equal(1);
                     expect(await itemStoreSale.userSellInfoLength(alice.address)).to.be.equal(0);
                     expect(await itemStoreSale.salesOnMetaverseLength(0)).to.be.equal(1);
 
-                    expect(await itemStoreSale.onSales(item721_0.address, 0)).to.be.equal(saleVID1);
+                    expect(await itemStoreSale.onSales(item721.address, 0)).to.be.equal(saleVID1);
                     await expect(itemStoreSale.userSellInfo(alice.address, 0)).to.be.reverted;
                     expect(await itemStoreSale.salesOnMetaverse(0, 0)).to.be.equal(saleVID1);
 
-                    expect(await itemStoreSale.userOnSaleAmounts(alice.address, item721_0.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.userOnSaleAmounts(alice.address, item721.address, 0)).to.be.equal(0);
                 }
-                expect(await item721_0.ownerOf(0)).to.be.equal(carol.address);
-                expect(await itemStoreSale.canSell(alice.address, 0, item721_0.address, 0, 1)).to.be.false;
-                expect(await itemStoreSale.canSell(carol.address, 0, item721_0.address, 0, 1)).to.be.true;
+                expect(await item721.ownerOf(0)).to.be.equal(carol.address);
+                expect(await itemStoreSale.canSell(alice.address, 0, item721.address, 0, 1)).to.be.false;
+                expect(await itemStoreSale.canSell(carol.address, 0, item721.address, 0, 1)).to.be.true;
 
-                await item721_0.connect(bob).setApprovalForAll(itemStoreSale.address, true);
-                expect((await itemStoreSale.sales(item721_0.address, 1, 0)).unitPrice).to.be.equal(300);
+                await item721.connect(bob).setApprovalForAll(itemStoreSale.address, true);
+                expect((await itemStoreSale.sales(item721.address, 1, 0)).unitPrice).to.be.equal(300);
 
                 await itemStoreSale.connect(bob).changeSellPrice([saleVID1], [700]);
                 await expect(itemStoreSale.connect(carol).buy([saleVID1], [1], [300], [0])).to.be.reverted;
@@ -727,22 +733,22 @@ describe("ItemStore", () => {
                 );
                 {
                     await expect(itemStoreSale.getSaleInfo(saleVID1)).to.be.reverted;
-                    expect(await itemStoreSale.salesCount(item721_0.address, 1)).to.be.equal(0);
-                    expect(await itemStoreSale.onSalesCount(item721_0.address)).to.be.equal(0);
+                    expect(await itemStoreSale.salesCount(item721.address, 1)).to.be.equal(0);
+                    expect(await itemStoreSale.onSalesCount(item721.address)).to.be.equal(0);
                     expect(await itemStoreSale.userSellInfoLength(alice.address)).to.be.equal(0);
                     expect(await itemStoreSale.salesOnMetaverseLength(0)).to.be.equal(0);
 
-                    await expect(itemStoreSale.onSales(item721_0.address, 0)).to.be.reverted;
+                    await expect(itemStoreSale.onSales(item721.address, 0)).to.be.reverted;
                     await expect(itemStoreSale.userSellInfo(alice.address, 0)).to.be.reverted;
                     await expect(itemStoreSale.salesOnMetaverse(0, 0)).to.be.reverted;
 
-                    expect(await itemStoreSale.userOnSaleAmounts(bob.address, item721_0.address, 1)).to.be.equal(0);
+                    expect(await itemStoreSale.userOnSaleAmounts(bob.address, item721.address, 1)).to.be.equal(0);
                 }
-                expect(await item721_0.ownerOf(1)).to.be.equal(carol.address);
-                expect(await itemStoreSale.canSell(bob.address, 0, item721_0.address, 1, 1)).to.be.false;
-                expect(await itemStoreSale.canSell(carol.address, 0, item721_0.address, 1, 1)).to.be.true;
+                expect(await item721.ownerOf(1)).to.be.equal(carol.address);
+                expect(await itemStoreSale.canSell(bob.address, 0, item721.address, 1, 1)).to.be.false;
+                expect(await itemStoreSale.canSell(carol.address, 0, item721.address, 1, 1)).to.be.true;
 
-                await item721_0.massMint2(bob.address, 2, 5);
+                await item721.massMint2(bob.address, 2, 5);
                 await metaverses.mileageOn(0);
                 await mileage.addToWhitelist(itemStoreSale.address);
 
@@ -752,7 +758,7 @@ describe("ItemStore", () => {
                     {
                         seller: bob.address,
                         metaverseId: 0,
-                        item: item721_0.address,
+                        item: item721.address,
                         id: itemId,
                         amount: 1,
                         unitPrice: 700,
@@ -760,7 +766,7 @@ describe("ItemStore", () => {
                     },
                     bobNonce++
                 );
-                await itemStoreSale.connect(bob).sell([0], [item721_0.address], [itemId++], [1], [700], [false]);
+                await itemStoreSale.connect(bob).sell([0], [item721.address], [itemId++], [1], [700], [false]);
                 expect(await mileage.mileages(carol.address)).to.be.equal(0);
                 await expect(() => itemStoreSale.connect(carol).buy([saleVID2], [1], [700], [0])).changeTokenBalances(
                     mix,
@@ -773,7 +779,7 @@ describe("ItemStore", () => {
                     {
                         seller: bob.address,
                         metaverseId: 0,
-                        item: item721_0.address,
+                        item: item721.address,
                         id: itemId,
                         amount: 1,
                         unitPrice: 700,
@@ -781,7 +787,7 @@ describe("ItemStore", () => {
                     },
                     bobNonce++
                 );
-                await itemStoreSale.connect(bob).sell([0], [item721_0.address], [itemId++], [1], [700], [false]);
+                await itemStoreSale.connect(bob).sell([0], [item721.address], [itemId++], [1], [700], [false]);
                 expect(await mileage.mileages(carol.address)).to.be.equal(7);
                 await expect(() => itemStoreSale.connect(carol).buy([saleVID3], [1], [700], [5])).changeTokenBalances(
                     mix,
@@ -795,7 +801,7 @@ describe("ItemStore", () => {
                     {
                         seller: bob.address,
                         metaverseId: 0,
-                        item: item721_0.address,
+                        item: item721.address,
                         id: itemId,
                         amount: 1,
                         unitPrice: 700,
@@ -803,7 +809,7 @@ describe("ItemStore", () => {
                     },
                     bobNonce++
                 );
-                await itemStoreSale.connect(bob).sell([0], [item721_0.address], [itemId++], [1], [700], [false]);
+                await itemStoreSale.connect(bob).sell([0], [item721.address], [itemId++], [1], [700], [false]);
                 await expect(() => itemStoreSale.connect(carol).buy([saleVID4], [1], [700], [9])).changeTokenBalances(
                     mix,
                     [deployer, alice, bob, carol, mileage],
@@ -1806,6 +1812,652 @@ describe("ItemStore", () => {
                 //         console.log(salesOnMetaverse[i].vIDlist);
                 //     }
                 // }
+            });
+        });
+        describe.only("Offer", function () {
+            it("should be that makeOffer function with ERC721 tokens works properly", async function () {
+                const { alice, bob, carol, dan, metaverses, itemStoreSale, Factory721 } = await setupTest();
+
+                await metaverses.addMetaverse("game0");
+                const item721 = (await Factory721.deploy()) as TestERC721;
+                await item721.mint(alice.address, 0);
+
+                expect(await itemStoreSale.canOffer(bob.address, 0, item721.address, 0, 1)).to.be.false;
+                await metaverses.addItem(0, item721.address, 1, "");
+                expect(await itemStoreSale.canOffer(bob.address, 0, item721.address, 0, 1)).to.be.true;
+                expect(await itemStoreSale.canOffer(bob.address, 0, item721.address, 0, 0)).to.be.false;
+                expect(await itemStoreSale.canOffer(bob.address, 0, item721.address, 0, 2)).to.be.false;
+
+                expect(await itemStoreSale.canOffer(alice.address, 0, item721.address, 0, 1)).to.be.false;
+
+                await expect(itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 0, true, 0)).to.be.reverted; //price0
+
+                const offerVID0 = makeOfferVerificationID(
+                    {
+                        offeror: bob.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 0,
+                        amount: 1,
+                        unitPrice: 100,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    0
+                );
+
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID0)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(bob.address)).to.be.equal(0);
+                }
+                await itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 100, true, 0);
+                {
+                    expect((await itemStoreSale.getOfferInfo(offerVID0)).item).to.be.equal(item721.address);
+                    expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(1);
+                    expect(await itemStoreSale.userOfferInfoLength(bob.address)).to.be.equal(1);
+
+                    expect(await itemStoreSale.userOfferInfo(bob.address, 0)).to.be.equal(offerVID0);
+                }
+                expect(await itemStoreSale.canOffer(bob.address, 0, item721.address, 0, 1)).to.be.true; //can make offer repeatedly
+
+                await item721.mint(bob.address, 1);
+                expect(await itemStoreSale.canOffer(bob.address, 0, item721.address, 1, 1)).to.be.false;
+                expect(await itemStoreSale.canOffer(alice.address, 0, item721.address, 1, 1)).to.be.true;
+                const offerVID1 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 1,
+                        amount: 1,
+                        unitPrice: 300,
+                        partialBuying: false,
+                        mileage: 0,
+                    },
+                    0
+                );
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID1)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item721.address, 1)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(alice.address)).to.be.equal(0);
+                }
+                await itemStoreSale.connect(alice).makeOffer(0, item721.address, 1, 1, 300, false, 0);
+                {
+                    expect((await itemStoreSale.getOfferInfo(offerVID1)).item).to.be.equal(item721.address);
+                    expect(await itemStoreSale.offersCount(item721.address, 1)).to.be.equal(1);
+                    expect(await itemStoreSale.userOfferInfoLength(alice.address)).to.be.equal(1);
+
+                    expect(await itemStoreSale.userOfferInfo(alice.address, 0)).to.be.equal(offerVID1);
+                }
+                expect(await itemStoreSale.canOffer(alice.address, 0, item721.address, 1, 1)).to.be.true;
+
+                await expect(itemStoreSale.connect(alice).cancelOffer(offerVID0)).to.be.reverted;
+                await itemStoreSale.connect(bob).cancelOffer(offerVID0);
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID0)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(bob.address)).to.be.equal(0);
+
+                    await expect(itemStoreSale.userOfferInfo(bob.address, 0)).to.be.reverted;
+                }
+            });
+
+            it("should be that acceptOffer function with ERC721 tokens works properly", async function () {
+                const { deployer, alice, bob, carol, dan, mix, metaverses, mileage, itemStoreSale, Factory721 } =
+                    await setupTest();
+
+                await metaverses.addMetaverse("game0");
+                const item721 = (await Factory721.deploy()) as TestERC721;
+                await item721.massMint2(carol.address, 0, 2);
+                await metaverses.addItem(0, item721.address, 1, "");
+
+                const offerVID0 = makeOfferVerificationID(
+                    {
+                        offeror: bob.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 0,
+                        amount: 1,
+                        unitPrice: 100,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    0
+                );
+                await expect(() =>
+                    itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 100, true, 0)
+                ).to.changeTokenBalances(mix, [bob, itemStoreSale], [-100, 100]);
+
+                const offerVID1 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 1,
+                        amount: 1,
+                        unitPrice: 700,
+                        partialBuying: false,
+                        mileage: 0,
+                    },
+                    0
+                );
+                await expect(() =>
+                    itemStoreSale.connect(alice).makeOffer(0, item721.address, 1, 1, 700, false, 0)
+                ).to.changeTokenBalances(mix, [alice, itemStoreSale], [-700, 700]);
+
+                await expect(itemStoreSale.connect(carol).acceptOffer(HashZero, 1)).to.be.reverted; //wrong hash
+                await expect(itemStoreSale.connect(alice).acceptOffer(offerVID0, 1)).to.be.reverted; //not owner
+                await expect(itemStoreSale.connect(carol).acceptOffer(offerVID0, 0)).to.be.reverted; //wrong amount
+                await expect(itemStoreSale.connect(carol).acceptOffer(offerVID0, 2)).to.be.reverted; //wrong amount
+
+                await expect(itemStoreSale.connect(carol).acceptOffer(offerVID0, 1)).to.be.reverted; //correct but not allowed
+
+                await item721.connect(carol).setApprovalForAll(itemStoreSale.address, true);
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID0, 1)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, itemStoreSale],
+                    [2, 0, 0, 98, -100]
+                );
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID0)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(bob.address)).to.be.equal(0);
+
+                    await expect(itemStoreSale.userOfferInfo(bob.address, 0)).to.be.reverted;
+                }
+                expect(await item721.ownerOf(0)).to.be.equal(bob.address);
+                expect(await itemStoreSale.canOffer(bob.address, 0, item721.address, 0, 1)).to.be.false;
+                expect(await itemStoreSale.canOffer(carol.address, 0, item721.address, 0, 1)).to.be.true; //owner changed
+
+                await metaverses.setRoyalty(0, alice.address, 1000); //10% royalty
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID1, 1)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, itemStoreSale],
+                    [17, 70, 0, 613, -700]
+                );
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID1)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item721.address, 1)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(alice.address)).to.be.equal(0);
+
+                    await expect(itemStoreSale.userOfferInfo(alice.address, 0)).to.be.reverted;
+                }
+                expect(await item721.ownerOf(1)).to.be.equal(alice.address);
+                expect(await itemStoreSale.canOffer(alice.address, 0, item721.address, 1, 1)).to.be.false;
+                expect(await itemStoreSale.canOffer(carol.address, 0, item721.address, 1, 1)).to.be.true;
+
+                await item721.massMint2(carol.address, 2, 5);
+                await metaverses.mileageOn(0);
+                await mileage.addToWhitelist(itemStoreSale.address);
+
+                await metaverses.setRoyalty(0, dan.address, 1000); //royalty recipient : dan.
+
+                let aliceNonce = 1;
+                let itemId = 2;
+                const offerVID2 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: itemId,
+                        amount: 1,
+                        unitPrice: 700,
+                        partialBuying: false,
+                        mileage: 0,
+                    },
+                    aliceNonce++
+                );
+                await expect(() =>
+                    itemStoreSale.connect(alice).makeOffer(0, item721.address, itemId++, 1, 700, false, 0)
+                ).changeTokenBalances(mix, [alice, mileage, itemStoreSale], [-700, 0, 700]);
+                expect(await mileage.mileages(alice.address)).to.be.equal(0);
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID2, 1)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, dan, mileage, itemStoreSale],
+                    [17, 0, 0, 613, 70 - 7, 7, -700]
+                );
+                expect(await mileage.mileages(alice.address)).to.be.equal(7);
+
+                const offerVID3 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: itemId,
+                        amount: 1,
+                        unitPrice: 700,
+                        partialBuying: false,
+                        mileage: 5,
+                    },
+                    aliceNonce++
+                );
+                await expect(() =>
+                    itemStoreSale.connect(alice).makeOffer(0, item721.address, itemId++, 1, 700, false, 5)
+                ).changeTokenBalances(mix, [alice, mileage, itemStoreSale], [-695, -5, 700]);
+                expect(await mileage.mileages(alice.address)).to.be.equal(2);
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID3, 1)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, dan, mileage, itemStoreSale],
+                    [17, 0, 0, 613, 70 - 7, 7, -700]
+                );
+                expect(await mileage.mileages(alice.address)).to.be.equal(9);
+
+                await metaverses.joinOnlyKlubsMembership(0);
+                const offerVID4 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: itemId,
+                        amount: 1,
+                        unitPrice: 700,
+                        partialBuying: false,
+                        mileage: 9,
+                    },
+                    aliceNonce++
+                );
+                await expect(() =>
+                    itemStoreSale.connect(alice).makeOffer(0, item721.address, itemId++, 1, 700, false, 9)
+                ).changeTokenBalances(mix, [alice, mileage, itemStoreSale], [-691, -9, 700]);
+                expect(await mileage.mileages(alice.address)).to.be.equal(0);
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID4, 1)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, dan, mileage, itemStoreSale],
+                    [17 - 3, 0, 0, 613, 70 - 4, 7, -700]
+                );
+                expect(await mileage.mileages(alice.address)).to.be.equal(7);
+            });
+
+            it("should be that _removeOffer function works properly and pass overall test in ERC721", async function () {
+                const { deployer, alice, bob, carol, dan, erin, frank, metaverses, itemStoreSale, Factory721 } =
+                    await setupTest();
+
+                const items: TestERC721[] = [];
+                const itemCounts = 3;
+                const itemIdCounts = 40;
+
+                for (let i = 0; i < itemCounts; i++) {
+                    items.push((await Factory721.deploy()) as TestERC721);
+                }
+
+                function getItemIndex(itemAddr: string) {
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].address == itemAddr) return i;
+                    }
+                    throw new Error("gettingItemIndex failiure");
+                }
+
+                const users: SignerWithAddress[] = [deployer, alice, bob, carol, dan, erin, frank];
+
+                function getUserIndex(userAddr: string) {
+                    for (let i = 0; i < users.length; i++) {
+                        if (users[i].address == userAddr) return i;
+                    }
+                    throw new Error("gettingUserIndex failiure");
+                }
+
+                {
+                    await metaverses.addMetaverse("game0");
+                    await metaverses.addMetaverse("game1");
+                    await metaverses.addMetaverse("game2");
+                    await metaverses.addMetaverse("game3"); //4 games
+
+                    for (const item of items) {
+                        await metaverses.addItem(0, item.address, 1, "");
+                        await metaverses.addItem(1, item.address, 1, "");
+                        await metaverses.addItem(2, item.address, 1, "");
+                        await metaverses.addItem(3, item.address, 1, "");
+                    }
+
+                    for (const item of items) {
+                        for (const user of users) {
+                            item.connect(user).setApprovalForAll(itemStoreSale.address, true);
+                        }
+                    }
+                }
+
+                const totalVIDs: string[] = [];
+                function removeVIDinTotalVIDs(VID: string) {
+                    const length = totalVIDs.length;
+                    if (length == 0) {
+                        throw new Error("totalVID length : 0");
+                    }
+                    let targetId = 0;
+
+                    for (let i = 0; i < length; i++) {
+                        if (totalVIDs[i] == VID) {
+                            targetId = i;
+                            break;
+                        }
+
+                        if (i == length - 1) {
+                            throw new Error("remove failure");
+                        }
+                    }
+
+                    totalVIDs[targetId] = totalVIDs[length - 1];
+                    totalVIDs.pop();
+                }
+
+                let userOfferInfo: VerID[] = [];
+                for (let i = 0; i < 7; i++) {
+                    userOfferInfo.push(new VerID());
+                }
+                async function randomMinting(n: number) {
+                    for (let i = 0; i < n; i++) {
+                        let item = Math.floor(Math.random() * itemCounts);
+                        let itemId = Math.floor(Math.random() * itemIdCounts);
+                        const user = Math.floor(Math.random() * 7);
+
+                        while (await items[item].isTokenExistent(itemId)) {
+                            item = Math.floor(Math.random() * itemCounts);
+                            itemId = Math.floor(Math.random() * itemIdCounts);
+                        }
+
+                        await items[item].mint(users[user].address, itemId);
+                    }
+                }
+
+                async function randomMakeOffer() {
+                    const metaverseId = Math.floor(Math.random() * 4);
+                    const item = Math.floor(Math.random() * itemCounts);
+                    let itemId = Math.floor(Math.random() * itemIdCounts);
+                    const unitPrice = Math.floor(Math.random() * itemIdCounts + 1);
+                    const partialBuying = Math.floor(Math.random() * 2);
+                    let user = Math.floor(Math.random() * 7);
+
+                    let isItemExistent = await items[item].isTokenExistent(itemId);
+                    if (!isItemExistent) {
+                        let user2 = Math.floor(Math.random() * 7);
+                        while (user == user2) {
+                            user2 = Math.floor(Math.random() * 7);
+                        }
+                        await items[item].mint(users[user2].address, itemId);
+                    } else {
+                        let owner = await items[item].ownerOf(itemId);
+                        while (owner == users[user].address) {
+                            user = Math.floor(Math.random() * 7);
+                        }
+                    }
+
+                    const offer: Offer = {
+                        offeror: users[user].address,
+                        metaverseId: metaverseId,
+                        item: items[item].address,
+                        id: itemId,
+                        amount: 1,
+                        unitPrice: unitPrice,
+                        partialBuying: partialBuying ? true : false,
+                        mileage: 0,
+                    };
+                    const nonce = await itemStoreSale.nonce(offer.offeror);
+
+                    const offerVID = makeOfferVerificationID(offer, nonce.toNumber());
+                    expect(
+                        await itemStoreSale
+                            .connect(users[user])
+                            .makeOffer(
+                                offer.metaverseId,
+                                offer.item,
+                                offer.id,
+                                offer.amount,
+                                offer.unitPrice,
+                                offer.partialBuying,
+                                offer.mileage
+                            ),
+                        "error in making an offer"
+                    )
+                        .to.emit(itemStoreSale, "MakeOffer")
+                        .withArgs(
+                            offer.metaverseId,
+                            offer.item,
+                            offer.id,
+                            offer.offeror,
+                            offer.amount,
+                            offer.unitPrice,
+                            offer.partialBuying,
+                            offerVID
+                        );
+
+                    userOfferInfo[user].addVID(offerVID);
+                    totalVIDs.push(offerVID);
+
+                    totalOffers++;
+                }
+
+                async function randomAcceptOffer() {
+                    const length = totalVIDs.length;
+                    let vIDId = Math.floor(Math.random() * length);
+
+                    let offerVID = totalVIDs[vIDId];
+                    let offerInfo = await itemStoreSale.getOfferInfo(offerVID);
+                    let offer = await itemStoreSale.offers(offerInfo.item, offerInfo.id, offerInfo.offerId);
+                    let offeror = getUserIndex(offer.offeror);
+                    let item = getItemIndex(offer.item);
+                    let acceptor = getUserIndex(await items[item].ownerOf(offer.id.toNumber()));
+
+                    while (offeror == acceptor) {
+                        vIDId = Math.floor(Math.random() * length);
+
+                        offerVID = totalVIDs[vIDId];
+                        offerInfo = await itemStoreSale.getOfferInfo(offerVID);
+                        offer = await itemStoreSale.offers(offerInfo.item, offerInfo.id, offerInfo.offerId);
+                        offeror = getUserIndex(offer.offeror);
+                        item = getItemIndex(offer.item);
+                        acceptor = getUserIndex(await items[item].ownerOf(offer.id.toNumber()));
+                    }
+
+                    expect(offer.verificationID).to.be.equal(offerVID);
+
+                    expect(
+                        await itemStoreSale.connect(users[acceptor]).acceptOffer(offerVID, offer.amount),
+                        "error in acceping an offer"
+                    )
+                        .to.emit(itemStoreSale, "AcceptOffer")
+                        .withArgs(
+                            offer.metaverseId,
+                            offer.item,
+                            offer.id,
+                            users[acceptor].address,
+                            offer.amount,
+                            true,
+                            offerVID
+                        );
+
+                    userOfferInfo[offeror].removeVID(offerVID);
+
+                    removeVIDinTotalVIDs(offerVID);
+                    totalOffers--;
+                }
+
+                async function checkOffers() {
+                    for (let i = 0; i < users.length; i++) {
+                        const length = userOfferInfo[i].vIDlist.length;
+                        const offeror = users[i].address;
+                        expect(await itemStoreSale.userOfferInfoLength(offeror)).to.be.equal(length);
+                        if (length > 0) {
+                            for (let j = 0; j < length; j++) {
+                                expect(await itemStoreSale.userOfferInfo(offeror, j)).to.be.equal(
+                                    userOfferInfo[i].vIDlist[j]
+                                );
+                            }
+                        }
+                    }
+
+                    for (const VID of totalVIDs) {
+                        const offerInfo = await itemStoreSale.getOfferInfo(VID);
+                        expect(
+                            (await itemStoreSale.offers(offerInfo.item, offerInfo.id, offerInfo.offerId)).verificationID
+                        ).to.be.equal(VID);
+                    }
+                }
+
+                let totalOffers = 0;
+
+                async function randomAction(n: number) {
+                    for (let i = 0; i < n; i++) {
+                        let whatToDo = Math.floor(Math.random() * 3); //0,1:MakeOffer,2:AcceptOffer
+
+                        if (totalOffers == 0) whatToDo = 0;
+
+                        if (whatToDo < 2) {
+                            await randomMakeOffer();
+                        } else {
+                            await randomAcceptOffer();
+                        }
+
+                        if (i > 0 && i % 10 == 0) await checkOffers();
+                        // console.log(`${i}th. `, totalOffers);
+                    }
+                }
+
+                await randomMinting(30);
+                await randomAction(400);
+                await checkOffers();
+
+                // {
+                // console.log(totalOffers);
+                // for (let i = 0; i < users.length; i++) {
+                //     console.log(userOfferInfo[i].vIDlist);
+                // }
+                // }
+            });
+
+            it("should be that accepting an offer of a token which have multiple offers works properly", async function () {
+                const { deployer, alice, bob, carol, dan, metaverses, itemStoreSale, Factory721 } = await setupTest();
+
+                await metaverses.addMetaverse("game0");
+                const item721 = (await Factory721.deploy()) as TestERC721;
+                await item721.mint(alice.address, 0);
+                await metaverses.addItem(0, item721.address, 1, "");
+                {
+                    await item721.connect(alice).setApprovalForAll(itemStoreSale.address, true);
+                    await item721.connect(bob).setApprovalForAll(itemStoreSale.address, true);
+                    await item721.connect(carol).setApprovalForAll(itemStoreSale.address, true);
+                    await item721.connect(dan).setApprovalForAll(itemStoreSale.address, true);
+                }
+                let bobNonce = 0;
+                let carolNonce = 0;
+                let danNonce = 0;
+
+                const offerVID0 = makeOfferVerificationID(
+                    {
+                        offeror: bob.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 0,
+                        amount: 1,
+                        unitPrice: 100,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    bobNonce++
+                );
+                await itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 100, true, 0);
+                const offerVID1 = makeOfferVerificationID(
+                    {
+                        offeror: carol.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 0,
+                        amount: 1,
+                        unitPrice: 120,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    carolNonce++
+                );
+                await itemStoreSale.connect(carol).makeOffer(0, item721.address, 0, 1, 120, true, 0);
+                const offerVID2 = makeOfferVerificationID(
+                    {
+                        offeror: bob.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 0,
+                        amount: 1,
+                        unitPrice: 100,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    bobNonce++
+                );
+                await itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 100, true, 0);
+                const offerVID3 = makeOfferVerificationID(
+                    {
+                        offeror: dan.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 0,
+                        amount: 1,
+                        unitPrice: 100,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    danNonce++
+                );
+                await itemStoreSale.connect(dan).makeOffer(0, item721.address, 0, 1, 100, true, 0);
+                const offerVID4 = makeOfferVerificationID(
+                    {
+                        offeror: bob.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 0,
+                        amount: 1,
+                        unitPrice: 60,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    bobNonce++
+                );
+                await itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 60, true, 0);
+                const offerVID5 = makeOfferVerificationID(
+                    {
+                        offeror: dan.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 0,
+                        amount: 1,
+                        unitPrice: 7,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    danNonce++
+                );
+                await itemStoreSale.connect(dan).makeOffer(0, item721.address, 0, 1, 7, true, 0);
+                const offerVID6 = makeOfferVerificationID(
+                    {
+                        offeror: carol.address,
+                        metaverseId: 0,
+                        item: item721.address,
+                        id: 0,
+                        amount: 1,
+                        unitPrice: 44,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    carolNonce++
+                );
+                await itemStoreSale.connect(carol).makeOffer(0, item721.address, 0, 1, 44, true, 0);
+
+                expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(7);
+                expect(await item721.ownerOf(0)).to.be.equal(alice.address);
+                await itemStoreSale.connect(alice).acceptOffer(offerVID3, 1);
+                await expect(itemStoreSale.getOfferInfo(offerVID3)).to.be.reverted;
+
+                expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(6);
+                expect(await item721.ownerOf(0)).to.be.equal(dan.address);
+                await itemStoreSale.connect(dan).acceptOffer(offerVID4, 1);
+                await expect(itemStoreSale.getOfferInfo(offerVID4)).to.be.reverted;
+
+                expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(5);
+                expect(await item721.ownerOf(0)).to.be.equal(bob.address);
+                await expect(itemStoreSale.connect(bob).acceptOffer(offerVID0, 1)).to.be.reverted;
+                await itemStoreSale.connect(bob).acceptOffer(offerVID6, 1);
+                await expect(itemStoreSale.getOfferInfo(offerVID6)).to.be.reverted;
+
+                expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(4);
+                expect(await item721.ownerOf(0)).to.be.equal(carol.address);
             });
         });
     });

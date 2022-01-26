@@ -63,3 +63,31 @@ export function makeSaleVerificationID(sale: Sale, nonce: number) {
         [sale.seller, sale.metaverseId, sale.item, sale.id, sale.amount, sale.unitPrice, sale.partialBuying, nonce]
     );
 }
+
+export interface Offer {
+    offeror: string;
+    metaverseId: number;
+    item: string;
+    id: number;
+    amount: number;
+    unitPrice: number;
+    partialBuying: boolean;
+    mileage: number;
+}
+
+export function makeOfferVerificationID(offer: Offer, nonce: number) {
+    return solidityKeccak256(
+        ["address", "uint256", "address", "uint256", "uint256", "uint256", "bool", "uint256", "uint256"],
+        [
+            offer.offeror,
+            offer.metaverseId,
+            offer.item,
+            offer.id,
+            offer.amount,
+            offer.unitPrice,
+            offer.partialBuying,
+            offer.mileage,
+            nonce,
+        ]
+    );
+}
