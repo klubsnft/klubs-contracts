@@ -1814,7 +1814,7 @@ describe("ItemStore", () => {
                 // }
             });
         });
-        describe.only("Offer", function () {
+        describe("Offer", function () {
             it("should be that makeOffer function with ERC721 tokens works properly", async function () {
                 const { alice, bob, carol, dan, metaverses, itemStoreSale, Factory721 } = await setupTest();
 
@@ -1945,6 +1945,8 @@ describe("ItemStore", () => {
                 await expect(() =>
                     itemStoreSale.connect(alice).makeOffer(0, item721.address, 1, 1, 700, false, 0)
                 ).to.changeTokenBalances(mix, [alice, itemStoreSale], [-700, 700]);
+
+                await item721.connect(alice).setApprovalForAll(itemStoreSale.address, true);
 
                 await expect(itemStoreSale.connect(carol).acceptOffer(HashZero, 1)).to.be.reverted; //wrong hash
                 await expect(itemStoreSale.connect(alice).acceptOffer(offerVID0, 1)).to.be.reverted; //not owner
@@ -2163,7 +2165,7 @@ describe("ItemStore", () => {
                     const metaverseId = Math.floor(Math.random() * 4);
                     const item = Math.floor(Math.random() * itemCounts);
                     let itemId = Math.floor(Math.random() * itemIdCounts);
-                    const unitPrice = Math.floor(Math.random() * itemIdCounts + 1);
+                    const unitPrice = Math.floor(Math.random() * 100 + 1);
                     const partialBuying = Math.floor(Math.random() * 2);
                     let user = Math.floor(Math.random() * 7);
 
@@ -2325,7 +2327,8 @@ describe("ItemStore", () => {
             });
 
             it("should be that accepting an offer of a token which have multiple offers works properly", async function () {
-                const { deployer, alice, bob, carol, dan, metaverses, itemStoreSale, Factory721 } = await setupTest();
+                const { deployer, alice, bob, carol, dan, metaverses, itemStoreSale, Factory721, mix } =
+                    await setupTest();
 
                 await metaverses.addMetaverse("game0");
                 const item721 = (await Factory721.deploy()) as TestERC721;
@@ -2354,7 +2357,9 @@ describe("ItemStore", () => {
                     },
                     bobNonce++
                 );
-                await itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 100, true, 0);
+                await expect(() =>
+                    itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 100, true, 0)
+                ).to.changeTokenBalances(mix, [bob, itemStoreSale], [-100, 100]);
                 const offerVID1 = makeOfferVerificationID(
                     {
                         offeror: carol.address,
@@ -2368,7 +2373,9 @@ describe("ItemStore", () => {
                     },
                     carolNonce++
                 );
-                await itemStoreSale.connect(carol).makeOffer(0, item721.address, 0, 1, 120, true, 0);
+                await expect(() =>
+                    itemStoreSale.connect(carol).makeOffer(0, item721.address, 0, 1, 120, true, 0)
+                ).to.changeTokenBalances(mix, [carol, itemStoreSale], [-120, 120]);
                 const offerVID2 = makeOfferVerificationID(
                     {
                         offeror: bob.address,
@@ -2382,7 +2389,9 @@ describe("ItemStore", () => {
                     },
                     bobNonce++
                 );
-                await itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 100, true, 0);
+                await expect(() =>
+                    itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 100, true, 0)
+                ).to.changeTokenBalances(mix, [bob, itemStoreSale], [-100, 100]);
                 const offerVID3 = makeOfferVerificationID(
                     {
                         offeror: dan.address,
@@ -2396,7 +2405,9 @@ describe("ItemStore", () => {
                     },
                     danNonce++
                 );
-                await itemStoreSale.connect(dan).makeOffer(0, item721.address, 0, 1, 100, true, 0);
+                await expect(() =>
+                    itemStoreSale.connect(dan).makeOffer(0, item721.address, 0, 1, 100, true, 0)
+                ).to.changeTokenBalances(mix, [dan, itemStoreSale], [-100, 100]);
                 const offerVID4 = makeOfferVerificationID(
                     {
                         offeror: bob.address,
@@ -2410,7 +2421,9 @@ describe("ItemStore", () => {
                     },
                     bobNonce++
                 );
-                await itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 60, true, 0);
+                await expect(() =>
+                    itemStoreSale.connect(bob).makeOffer(0, item721.address, 0, 1, 60, true, 0)
+                ).to.changeTokenBalances(mix, [bob, itemStoreSale], [-60, 60]);
                 const offerVID5 = makeOfferVerificationID(
                     {
                         offeror: dan.address,
@@ -2424,7 +2437,9 @@ describe("ItemStore", () => {
                     },
                     danNonce++
                 );
-                await itemStoreSale.connect(dan).makeOffer(0, item721.address, 0, 1, 7, true, 0);
+                await expect(() =>
+                    itemStoreSale.connect(dan).makeOffer(0, item721.address, 0, 1, 7, true, 0)
+                ).to.changeTokenBalances(mix, [dan, itemStoreSale], [-7, 7]);
                 const offerVID6 = makeOfferVerificationID(
                     {
                         offeror: carol.address,
@@ -2438,7 +2453,9 @@ describe("ItemStore", () => {
                     },
                     carolNonce++
                 );
-                await itemStoreSale.connect(carol).makeOffer(0, item721.address, 0, 1, 44, true, 0);
+                await expect(() =>
+                    itemStoreSale.connect(carol).makeOffer(0, item721.address, 0, 1, 44, true, 0)
+                ).to.changeTokenBalances(mix, [carol, itemStoreSale], [-44, 44]);
 
                 expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(7);
                 expect(await item721.ownerOf(0)).to.be.equal(alice.address);
@@ -2458,7 +2475,702 @@ describe("ItemStore", () => {
 
                 expect(await itemStoreSale.offersCount(item721.address, 0)).to.be.equal(4);
                 expect(await item721.ownerOf(0)).to.be.equal(carol.address);
+
+                await expect(() => itemStoreSale.connect(bob).cancelOffer(offerVID2)).to.changeTokenBalances(
+                    mix,
+                    [bob, itemStoreSale],
+                    [100, -100]
+                );
             });
+
+            it("should be that makeOffer function with ERC1155 tokens works properly", async function () {
+                const { alice, bob, metaverses, itemStoreSale, Factory1155, mix } = await setupTest();
+
+                await metaverses.addMetaverse("game0");
+                const item1155 = (await Factory1155.deploy()) as TestERC1155;
+                await item1155.create(0, 0, "");
+                await item1155.mintBatch(alice.address, [0], [10]);
+
+                expect(await itemStoreSale.canOffer(bob.address, 0, item1155.address, 0, 1)).to.be.false;
+                await metaverses.addItem(0, item1155.address, 0, "");
+                expect(await itemStoreSale.canOffer(bob.address, 0, item1155.address, 0, 1)).to.be.true;
+                expect(await itemStoreSale.canOffer(bob.address, 0, item1155.address, 0, 0)).to.be.false;
+                expect(await itemStoreSale.canOffer(bob.address, 0, item1155.address, 0, 2)).to.be.true; //ERC1155
+
+                expect(await itemStoreSale.canOffer(alice.address, 0, item1155.address, 0, 1)).to.be.true; //ERC1155
+
+                await expect(itemStoreSale.connect(bob).makeOffer(0, item1155.address, 0, 1, 0, true, 0)).to.be
+                    .reverted; //price0
+
+                const offerVID0 = makeOfferVerificationID(
+                    {
+                        offeror: bob.address,
+                        metaverseId: 0,
+                        item: item1155.address,
+                        id: 0,
+                        amount: 5,
+                        unitPrice: 100,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    0
+                );
+
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID0)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item1155.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(bob.address)).to.be.equal(0);
+                }
+                await expect(() =>
+                    itemStoreSale.connect(bob).makeOffer(0, item1155.address, 0, 5, 100, true, 0)
+                ).to.changeTokenBalances(mix, [bob, itemStoreSale], [-500, 500]);
+                {
+                    expect((await itemStoreSale.getOfferInfo(offerVID0)).item).to.be.equal(item1155.address);
+                    expect(await itemStoreSale.offersCount(item1155.address, 0)).to.be.equal(1);
+                    expect(await itemStoreSale.userOfferInfoLength(bob.address)).to.be.equal(1);
+
+                    expect(await itemStoreSale.userOfferInfo(bob.address, 0)).to.be.equal(offerVID0);
+                }
+                expect(await itemStoreSale.canOffer(bob.address, 0, item1155.address, 0, 5)).to.be.true; //can make offer repeatedly
+
+                await item1155.create(1, 0, "");
+                await item1155.mintBatch(bob.address, [1], [10]);
+
+                expect(await itemStoreSale.canOffer(bob.address, 0, item1155.address, 1, 1)).to.be.true;
+                expect(await itemStoreSale.canOffer(alice.address, 0, item1155.address, 1, 1)).to.be.true;
+                const offerVID1 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item1155.address,
+                        id: 1,
+                        amount: 1,
+                        unitPrice: 300,
+                        partialBuying: false,
+                        mileage: 0,
+                    },
+                    0
+                );
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID1)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item1155.address, 1)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(alice.address)).to.be.equal(0);
+                }
+                await itemStoreSale.connect(alice).makeOffer(0, item1155.address, 1, 1, 300, false, 0);
+                {
+                    expect((await itemStoreSale.getOfferInfo(offerVID1)).item).to.be.equal(item1155.address);
+                    expect(await itemStoreSale.offersCount(item1155.address, 1)).to.be.equal(1);
+                    expect(await itemStoreSale.userOfferInfoLength(alice.address)).to.be.equal(1);
+
+                    expect(await itemStoreSale.userOfferInfo(alice.address, 0)).to.be.equal(offerVID1);
+                }
+                expect(await itemStoreSale.canOffer(alice.address, 0, item1155.address, 1, 1)).to.be.true;
+                expect(await itemStoreSale.canOffer(bob.address, 0, item1155.address, 1, 1)).to.be.true;
+
+                await expect(itemStoreSale.connect(alice).cancelOffer(offerVID0)).to.be.reverted;
+                await expect(() => itemStoreSale.connect(bob).cancelOffer(offerVID0)).to.changeTokenBalances(
+                    mix,
+                    [bob, itemStoreSale],
+                    [500, -500]
+                );
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID0)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item1155.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(bob.address)).to.be.equal(0);
+
+                    await expect(itemStoreSale.userOfferInfo(bob.address, 0)).to.be.reverted;
+                }
+            });
+
+            it("should be that acceptOffer function with ERC1155 tokens works properly", async function () {
+                const { deployer, alice, bob, carol, dan, mix, metaverses, mileage, itemStoreSale, Factory1155 } =
+                    await setupTest();
+
+                await metaverses.addMetaverse("game0");
+                const item1155 = (await Factory1155.deploy()) as TestERC1155;
+                await item1155.create(0, 0, "");
+                await item1155.mintBatch(carol.address, [0], [10]);
+                await item1155.create(1, 0, "");
+                await item1155.mintBatch(carol.address, [1], [20]);
+
+                await metaverses.addItem(0, item1155.address, 0, "");
+                const offerVID0 = makeOfferVerificationID(
+                    {
+                        offeror: bob.address,
+                        metaverseId: 0,
+                        item: item1155.address,
+                        id: 0,
+                        amount: 5,
+                        unitPrice: 100,
+                        partialBuying: true,
+                        mileage: 0,
+                    },
+                    0
+                );
+                await expect(() =>
+                    itemStoreSale.connect(bob).makeOffer(0, item1155.address, 0, 5, 100, true, 0)
+                ).to.changeTokenBalances(mix, [bob, itemStoreSale], [-500, 500]);
+
+                const offerVID1 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item1155.address,
+                        id: 1,
+                        amount: 5,
+                        unitPrice: 700,
+                        partialBuying: false,
+                        mileage: 0,
+                    },
+                    0
+                );
+                await expect(() =>
+                    itemStoreSale.connect(alice).makeOffer(0, item1155.address, 1, 5, 700, false, 0)
+                ).to.changeTokenBalances(mix, [alice, itemStoreSale], [-3500, 3500]);
+
+                await item1155.connect(alice).setApprovalForAll(itemStoreSale.address, true);
+
+                await expect(itemStoreSale.connect(carol).acceptOffer(HashZero, 1)).to.be.reverted; //wrong hash
+                await expect(itemStoreSale.connect(alice).acceptOffer(offerVID0, 1)).to.be.reverted; //doesn't have
+                await expect(itemStoreSale.connect(carol).acceptOffer(offerVID0, 0)).to.be.reverted; //wrong amount
+                await expect(itemStoreSale.connect(carol).acceptOffer(offerVID0, 6)).to.be.reverted; //wrong amount
+
+                await expect(itemStoreSale.connect(carol).acceptOffer(offerVID0, 2)).to.be.reverted; //correct but not allowed
+
+                await item1155.connect(carol).setApprovalForAll(itemStoreSale.address, true);
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID0, 4)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, itemStoreSale],
+                    [10, 0, 0, 390, -400]
+                ); //partial accepting. 4/5. (1/5 left in offer)
+                {
+                    const offerInfo = await itemStoreSale.getOfferInfo(offerVID0);
+                    expect(offerInfo.item).to.be.equal(item1155.address);
+                    const offer = await itemStoreSale.offers(offerInfo.item, offerInfo.id, offerInfo.offerId);
+                    expect(offer.verificationID).to.be.equal(offerVID0);
+                    expect(offer.amount).to.be.equal(1);
+                    expect(await itemStoreSale.offersCount(item1155.address, 0)).to.be.equal(1);
+                    expect(await itemStoreSale.userOfferInfoLength(bob.address)).to.be.equal(1);
+
+                    expect(await itemStoreSale.userOfferInfo(bob.address, 0)).to.be.equal(offerVID0);
+                }
+                expect(await item1155.balanceOf(bob.address, 0)).to.be.equal(4);
+                expect(await item1155.balanceOf(carol.address, 0)).to.be.equal(6);
+                expect(await itemStoreSale.canOffer(bob.address, 0, item1155.address, 0, 10)).to.be.true;
+                expect(await itemStoreSale.canOffer(carol.address, 0, item1155.address, 0, 10)).to.be.true;
+
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID0, 1)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, itemStoreSale],
+                    [2, 0, 0, 98, -100]
+                ); //accepting all left. offer is deleted.
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID0)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item1155.address, 0)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(bob.address)).to.be.equal(0);
+
+                    await expect(itemStoreSale.userOfferInfo(bob.address, 0)).to.be.reverted;
+                }
+                expect(await item1155.balanceOf(bob.address, 0)).to.be.equal(5);
+                expect(await item1155.balanceOf(carol.address, 0)).to.be.equal(5);
+                expect(await itemStoreSale.canOffer(bob.address, 0, item1155.address, 0, 10)).to.be.true;
+                expect(await itemStoreSale.canOffer(carol.address, 0, item1155.address, 0, 10)).to.be.true;
+
+                await metaverses.setRoyalty(0, alice.address, 1000); //10% royalty
+                await expect(itemStoreSale.connect(carol).acceptOffer(offerVID1, 1)).to.be.reverted; //partial buying is not allowed
+
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID1, 5)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, itemStoreSale],
+                    [87, 350, 0, 3063, -3500]
+                );
+                {
+                    await expect(itemStoreSale.getOfferInfo(offerVID1)).to.be.reverted;
+                    expect(await itemStoreSale.offersCount(item1155.address, 1)).to.be.equal(0);
+                    expect(await itemStoreSale.userOfferInfoLength(alice.address)).to.be.equal(0);
+
+                    await expect(itemStoreSale.userOfferInfo(alice.address, 0)).to.be.reverted;
+                }
+                expect(await item1155.balanceOf(alice.address, 1)).to.be.equal(5);
+                expect(await item1155.balanceOf(carol.address, 1)).to.be.equal(15);
+                expect(await itemStoreSale.canOffer(alice.address, 0, item1155.address, 1, 7)).to.be.true;
+                expect(await itemStoreSale.canOffer(carol.address, 0, item1155.address, 1, 7)).to.be.true;
+
+                await metaverses.mileageOn(0);
+                await mileage.addToWhitelist(itemStoreSale.address);
+
+                await metaverses.setRoyalty(0, dan.address, 1000); //royalty recipient : dan.
+
+                let aliceNonce = 1;
+                const itemId = 1;
+                const offerVID2 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item1155.address,
+                        id: itemId,
+                        amount: 5,
+                        unitPrice: 700,
+                        partialBuying: false,
+                        mileage: 0,
+                    },
+                    aliceNonce++
+                );
+                await expect(() =>
+                    itemStoreSale.connect(alice).makeOffer(0, item1155.address, itemId, 5, 700, false, 0)
+                ).changeTokenBalances(mix, [alice, mileage, itemStoreSale], [-3500, 0, 3500]);
+                expect(await mileage.mileages(alice.address)).to.be.equal(0);
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID2, 5)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, dan, mileage, itemStoreSale],
+                    [87, 0, 0, 3063, 350 - 35, 35, -3500]
+                );
+                expect(await mileage.mileages(alice.address)).to.be.equal(35);
+
+                const offerVID3 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item1155.address,
+                        id: itemId,
+                        amount: 5,
+                        unitPrice: 700,
+                        partialBuying: false,
+                        mileage: 5,
+                    },
+                    aliceNonce++
+                );
+                await expect(() =>
+                    itemStoreSale.connect(alice).makeOffer(0, item1155.address, itemId, 5, 700, false, 5)
+                ).changeTokenBalances(mix, [alice, mileage, itemStoreSale], [-3495, -5, 3500]);
+                expect(await mileage.mileages(alice.address)).to.be.equal(30);
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID3, 5)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, dan, mileage, itemStoreSale],
+                    [87, 0, 0, 3063, 350 - 35, 35, -3500]
+                );
+                expect(await mileage.mileages(alice.address)).to.be.equal(65);
+
+                await metaverses.joinOnlyKlubsMembership(0);
+                const offerVID4 = makeOfferVerificationID(
+                    {
+                        offeror: alice.address,
+                        metaverseId: 0,
+                        item: item1155.address,
+                        id: itemId,
+                        amount: 5,
+                        unitPrice: 700,
+                        partialBuying: false,
+                        mileage: 65,
+                    },
+                    aliceNonce++
+                );
+                await expect(() =>
+                    itemStoreSale.connect(alice).makeOffer(0, item1155.address, itemId, 5, 700, false, 65)
+                ).changeTokenBalances(mix, [alice, mileage, itemStoreSale], [-3435, -65, 3500]);
+                expect(await mileage.mileages(alice.address)).to.be.equal(0);
+                await expect(() => itemStoreSale.connect(carol).acceptOffer(offerVID4, 5)).changeTokenBalances(
+                    mix,
+                    [deployer, alice, bob, carol, dan, mileage, itemStoreSale],
+                    [87 - 17, 0, 0, 3063, 350 - 18, 35, -3500]
+                );
+                expect(await mileage.mileages(alice.address)).to.be.equal(35);
+            });
+
+            it("_should be that _removeOffer function works properly and pass overall test in ERC1155", async function () {
+                const { deployer, alice, bob, carol, dan, erin, frank, metaverses, itemStoreSale, Factory1155, mix } =
+                    await setupTest();
+
+                const items: TestERC1155[] = [];
+                const itemCounts = 3;
+                const itemIdCounts = 30;
+
+                for (let i = 0; i < itemCounts; i++) {
+                    items.push((await Factory1155.deploy()) as TestERC1155);
+                }
+
+                function getItemIndex(itemAddr: string) {
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].address == itemAddr) return i;
+                    }
+                    throw new Error("gettingItemIndex failiure");
+                }
+
+                const users: SignerWithAddress[] = [deployer, alice, bob, carol, dan, erin, frank];
+
+                function getUserIndex(userAddr: string) {
+                    for (let i = 0; i < users.length; i++) {
+                        if (users[i].address == userAddr) return i;
+                    }
+                    throw new Error("gettingUserIndex failiure");
+                }
+
+                {
+                    await metaverses.addMetaverse("game0");
+                    await metaverses.addMetaverse("game1");
+                    await metaverses.addMetaverse("game2");
+                    await metaverses.addMetaverse("game3"); //4 games
+
+                    for (const item of items) {
+                        await metaverses.addItem(0, item.address, 0, "");
+                        await metaverses.addItem(1, item.address, 0, "");
+                        await metaverses.addItem(2, item.address, 0, "");
+                        await metaverses.addItem(3, item.address, 0, "");
+                    }
+
+                    for (const item of items) {
+                        for (const user of users) {
+                            item.connect(user).setApprovalForAll(itemStoreSale.address, true);
+                        }
+                    }
+                }
+
+                const totalVIDs: string[] = [];
+                function removeVIDinTotalVIDs(VID: string) {
+                    const length = totalVIDs.length;
+                    if (length == 0) {
+                        throw new Error("totalVID length : 0");
+                    }
+                    let targetId = 0;
+
+                    for (let i = 0; i < length; i++) {
+                        if (totalVIDs[i] == VID) {
+                            targetId = i;
+                            break;
+                        }
+
+                        if (i == length - 1) {
+                            throw new Error("remove failure");
+                        }
+                    }
+
+                    totalVIDs[targetId] = totalVIDs[length - 1];
+                    totalVIDs.pop();
+                }
+
+                let userOfferInfo: VerID[] = [];
+                for (let i = 0; i < 7; i++) {
+                    userOfferInfo.push(new VerID());
+                }
+
+                async function randomMinting(n: number) {
+                    for (let i = 0; i < n; i++) {
+                        const item = Math.floor(Math.random() * itemCounts);
+                        const itemId = Math.floor(Math.random() * itemIdCounts);
+                        const user = Math.floor(Math.random() * 7);
+                        const amount = Math.floor(Math.random() * 20 + 1);
+
+                        if (!(await items[item].isTokenExistent(itemId))) {
+                            await items[item].create(itemId, 0, "");
+                        }
+
+                        await items[item].mintBatch(users[user].address, [itemId], [amount]);
+                    }
+                }
+
+                async function randomMakeOffer() {
+                    const metaverseId = Math.floor(Math.random() * 4);
+                    const item = Math.floor(Math.random() * itemCounts);
+                    const itemId = Math.floor(Math.random() * itemIdCounts);
+                    const amount = Math.floor(Math.random() * 20 + 1);
+                    const unitPrice = Math.floor(Math.random() * 100 + 1);
+                    const partialBuying = Math.floor(Math.random() * 2);
+                    let user = Math.floor(Math.random() * 7);
+
+                    let isItemExistent = await items[item].isTokenExistent(itemId);
+                    if (!isItemExistent) {
+                        let user2 = Math.floor(Math.random() * 7);
+                        while (user == user2) {
+                            user2 = Math.floor(Math.random() * 7);
+                        }
+                        await items[item].create(itemId, 0, "");
+                        await items[item].mintBatch(users[user2].address, [itemId], [amount]);
+                    }
+
+                    const offer: Offer = {
+                        offeror: users[user].address,
+                        metaverseId: metaverseId,
+                        item: items[item].address,
+                        id: itemId,
+                        amount: amount,
+                        unitPrice: unitPrice,
+                        partialBuying: partialBuying ? true : false,
+                        mileage: 0,
+                    };
+                    const nonce = await itemStoreSale.nonce(offer.offeror);
+
+                    const offerVID = makeOfferVerificationID(offer, nonce.toNumber());
+
+                    const mixBal0 = await mix.balanceOf(users[user].address);
+                    expect(
+                        await itemStoreSale
+                            .connect(users[user])
+                            .makeOffer(
+                                offer.metaverseId,
+                                offer.item,
+                                offer.id,
+                                offer.amount,
+                                offer.unitPrice,
+                                offer.partialBuying,
+                                offer.mileage
+                            ),
+                        "error in making an offer"
+                    )
+                        .to.emit(itemStoreSale, "MakeOffer")
+                        .withArgs(
+                            offer.metaverseId,
+                            offer.item,
+                            offer.id,
+                            offer.offeror,
+                            offer.amount,
+                            offer.unitPrice,
+                            offer.partialBuying,
+                            offerVID
+                        );
+                    expect(mixBal0.sub(await mix.balanceOf(users[user].address))).to.be.equal(
+                        offer.amount * offer.unitPrice
+                    );
+
+                    userOfferInfo[user].addVID(offerVID);
+                    totalVIDs.push(offerVID);
+
+                    totalOffers++;
+                }
+
+                async function randomAcceptOffer() {
+                    const length = totalVIDs.length;
+                    const vIDId = Math.floor(Math.random() * length);
+
+                    const offerVID = totalVIDs[vIDId];
+                    const offerInfo = await itemStoreSale.getOfferInfo(offerVID);
+                    const offer = await itemStoreSale.offers(offerInfo.item, offerInfo.id, offerInfo.offerId);
+                    const offeror = getUserIndex(offer.offeror);
+                    const item = getItemIndex(offer.item);
+                    let acceptor;
+                    let amount = 0;
+                    if (!offer.partialBuying) {
+                        amount = offer.amount.toNumber();
+                    } else {
+                        amount = Math.floor(Math.random() * offer.amount.toNumber()) + 1;
+                    }
+
+                    {
+                        let found = false;
+                        let _acceptor = Math.floor(Math.random() * users.length);
+                        for (let i = 0; i < users.length; i++) {
+                            let j = _acceptor + i;
+                            if (j >= users.length) j -= users.length;
+                            if (
+                                j != offeror &&
+                                (await items[item].balanceOf(users[j].address, offer.id.toNumber())).gte(amount)
+                            ) {
+                                acceptor = j;
+                                found = true;
+                            }
+                        }
+                        if (!found) {
+                            acceptor = Math.floor(Math.random() * users.length);
+                            while (offeror == acceptor) {
+                                acceptor = Math.floor(Math.random() * users.length);
+                            }
+                            await items[item].mintBatch(
+                                users[acceptor].address,
+                                [offer.id.toNumber()],
+                                [offer.amount.toNumber()]
+                            );
+                        }
+                    }
+
+                    expect(offer.verificationID).to.be.equal(offerVID);
+
+                    const amountLeft = offer.amount.toNumber() - amount;
+                    expect(amountLeft).to.be.gte(0);
+
+                    let isFulfilled = false;
+                    if (amountLeft == 0) isFulfilled = true;
+
+                    expect(
+                        await itemStoreSale.connect(users[acceptor as number]).acceptOffer(offerVID, amount),
+                        "error in acceping an offer"
+                    )
+                        .to.emit(itemStoreSale, "AcceptOffer")
+                        .withArgs(
+                            offer.metaverseId,
+                            offer.item,
+                            offer.id,
+                            users[acceptor as number].address,
+                            amount,
+                            isFulfilled,
+                            offerVID
+                        );
+
+                    if (isFulfilled) {
+                        userOfferInfo[offeror].removeVID(offerVID);
+                        removeVIDinTotalVIDs(offerVID);
+                        totalOffers--;
+                    }
+                }
+
+                async function checkOffers() {
+                    for (let i = 0; i < users.length; i++) {
+                        const length = userOfferInfo[i].vIDlist.length;
+                        const offeror = users[i].address;
+                        expect(await itemStoreSale.userOfferInfoLength(offeror)).to.be.equal(length);
+                        if (length > 0) {
+                            for (let j = 0; j < length; j++) {
+                                expect(await itemStoreSale.userOfferInfo(offeror, j)).to.be.equal(
+                                    userOfferInfo[i].vIDlist[j]
+                                );
+                            }
+                        }
+                    }
+
+                    for (const VID of totalVIDs) {
+                        const offerInfo = await itemStoreSale.getOfferInfo(VID);
+                        expect(
+                            (await itemStoreSale.offers(offerInfo.item, offerInfo.id, offerInfo.offerId)).verificationID
+                        ).to.be.equal(VID);
+                    }
+                }
+
+                let totalOffers = 0;
+                // let make = 0;
+                // let accept = 0;
+                async function randomAction(n: number) {
+                    for (let i = 0; i < n; i++) {
+                        let whatToDo = Math.floor(Math.random() * 3); //0,1:MakeOffer,2:AcceptOffer
+
+                        if (totalOffers == 0) whatToDo = 0;
+
+                        if (whatToDo < 2) {
+                            await randomMakeOffer();
+                            // make++;
+                        } else {
+                            await randomAcceptOffer();
+                            // accept++;
+                        }
+                        if (i > 0 && i % 10 == 0) await checkOffers();
+                        // console.log(`${i}th. `, totalOffers, make, accept);
+                    }
+                }
+
+                await randomMinting(100);
+                await randomAction(500);
+                await checkOffers();
+
+                // console.log(totalOffers);
+                // {
+                //     for (let i = 0; i < users.length; i++) {
+                //         console.log(userOfferInfo[i].vIDlist);
+                //     }
+                // }
+            });
+
+            it("should be that accepting an offer of a token which have multiple offers works properly", async function () {
+                const { deployer, alice, bob, carol, dan, metaverses, itemStoreSale, Factory1155, mix } =
+                    await setupTest();
+
+                await metaverses.addMetaverse("game0");
+                const item1155 = (await Factory1155.deploy()) as TestERC1155;
+                await metaverses.addItem(0, item1155.address, 0, "");
+                await item1155.create(0, 0, "");
+                await item1155.mintBatch(alice.address, [0], [50]);
+                {
+                    await item1155.connect(alice).setApprovalForAll(itemStoreSale.address, true);
+                    await item1155.connect(bob).setApprovalForAll(itemStoreSale.address, true);
+                    await item1155.connect(carol).setApprovalForAll(itemStoreSale.address, true);
+                    await item1155.connect(dan).setApprovalForAll(itemStoreSale.address, true);
+                }
+                let aliceNonce = 0;
+                let bobNonce = 0;
+                let carolNonce = 0;
+                let danNonce = 0;
+
+                async function makeOffer(
+                    offeror: SignerWithAddress,
+                    amount: number,
+                    unitPrice: number,
+                    partialBuying: boolean
+                ) {
+                    let nonce = 0;
+                    if (offeror == alice) nonce = aliceNonce++;
+                    else if (offeror == bob) nonce = bobNonce++;
+                    else if (offeror == carol) nonce = carolNonce++;
+                    else if (offeror == dan) nonce = danNonce++;
+
+                    const mixBal0 = await mix.balanceOf(offeror.address);
+                    const mixBal1 = await mix.balanceOf(itemStoreSale.address);
+
+                    const verID = makeOfferVerificationID(
+                        {
+                            offeror: offeror.address,
+                            metaverseId: 0,
+                            item: item1155.address,
+                            id: 0,
+                            amount: amount,
+                            unitPrice: unitPrice,
+                            partialBuying: partialBuying,
+                            mileage: 0,
+                        },
+                        nonce
+                    );
+
+                    expect(
+                        await itemStoreSale
+                            .connect(offeror)
+                            .makeOffer(0, item1155.address, 0, amount, unitPrice, partialBuying, 0)
+                    )
+                        .to.emit(itemStoreSale, "MakeOffer")
+                        .withArgs(0, item1155.address, 0, offeror.address, amount, unitPrice, partialBuying, verID);
+
+                    expect(mixBal0.sub(await mix.balanceOf(offeror.address))).to.be.equal(amount * unitPrice);
+                    expect((await mix.balanceOf(itemStoreSale.address)).sub(mixBal1)).to.be.equal(amount * unitPrice);
+
+                    return verID;
+                }
+                const offerVID0 = await makeOffer(bob, 3, 100, true);
+                const offerVID1 = await makeOffer(carol, 5, 120, true);
+                const offerVID2 = await makeOffer(bob, 3, 100, true);
+                const offerVID3 = await makeOffer(dan, 1, 100, false); //clear
+                const offerVID4 = await makeOffer(bob, 5, 60, true); //4/5 -> cancel
+                const offerVID5 = await makeOffer(dan, 2, 10, false); //clear
+                const offerVID6 = await makeOffer(carol, 7, 50, false);
+
+                expect(await itemStoreSale.offersCount(item1155.address, 0)).to.be.equal(7);
+                expect(await item1155.balanceOf(alice.address, 0)).to.be.equal(50);
+                await expect(() => itemStoreSale.connect(alice).acceptOffer(offerVID3, 1)).to.changeTokenBalances(
+                    mix,
+                    [deployer, alice, itemStoreSale],
+                    [2, 98, -100]
+                );
+                await expect(itemStoreSale.getOfferInfo(offerVID3)).to.be.reverted;
+
+                expect(await itemStoreSale.offersCount(item1155.address, 0)).to.be.equal(6);
+                expect(await item1155.balanceOf(alice.address, 0)).to.be.equal(49);
+                await itemStoreSale.connect(alice).acceptOffer(offerVID4, 4);
+                await expect(itemStoreSale.getOfferInfo(offerVID4)).to.be.not.reverted;
+
+                expect(await itemStoreSale.offersCount(item1155.address, 0)).to.be.equal(6);
+                expect(await item1155.balanceOf(alice.address, 0)).to.be.equal(45);
+                expect(await item1155.balanceOf(bob.address, 0)).to.be.equal(4);
+                expect(await item1155.balanceOf(dan.address, 0)).to.be.equal(1);
+                await expect(itemStoreSale.connect(bob).acceptOffer(offerVID0, 3)).to.be.reverted; //self trading
+                await itemStoreSale.connect(bob).acceptOffer(offerVID5, 2);
+                await expect(itemStoreSale.getOfferInfo(offerVID5)).to.be.reverted;
+
+                expect(await itemStoreSale.offersCount(item1155.address, 0)).to.be.equal(5);
+                expect(await item1155.balanceOf(bob.address, 0)).to.be.equal(2);
+                expect(await item1155.balanceOf(dan.address, 0)).to.be.equal(3);
+
+                await expect(() => itemStoreSale.connect(bob).cancelOffer(offerVID4)).to.changeTokenBalances(
+                    mix,
+                    [bob, itemStoreSale],
+                    [60, -60]
+                );
+            });
+        });
+    });
+
         });
     });
 });
