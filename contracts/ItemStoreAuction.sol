@@ -5,12 +5,13 @@ import "./klaytn-contracts/math/SafeMath.sol";
 import "./klaytn-contracts/token/KIP17/IKIP17.sol";
 import "./klaytn-contracts/token/KIP37/IKIP37.sol";
 import "./libraries/ItemStoreLibrary.sol";
+import "./libraries/ERC1155KIP37Holder.sol";
 import "./interfaces/IItemStoreAuction.sol";
 import "./interfaces/IMetaverses.sol";
 import "./interfaces/IMix.sol";
 import "./interfaces/IMileage.sol";
 
-contract ItemStoreAuction is Ownable, IItemStoreAuction {
+contract ItemStoreAuction is Ownable, ERC1155KIP37Holder, IItemStoreAuction {
     using SafeMath for uint256;
     using ItemStoreLibrary for *;
 
