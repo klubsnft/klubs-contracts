@@ -569,21 +569,23 @@ contract ItemStoreSale is Ownable, IItemStoreSale {
             require(offerAmount >= amount);
         }
 
-        uint256 amountLeft = offerAmount.sub(amount);
-        offer.amount = amountLeft;
-
         item._transferItems(commonData.metaverses(), metaverseId, id, amount, msg.sender, offeror);
         uint256 price = amount.mul(offer.unitPrice);
 
         _distributeReward(metaverseId, offeror, msg.sender, price);
 
-        bool isFulfilled = false;
-        if (amountLeft == 0) {
-            _removeOffer(offerVerificationID);
-            isFulfilled = true;
+        bool isFulfilled;
+        {
+            uint256 amountLeft = offerAmount.sub(amount);
+            offer.amount = amountLeft;
+
+            if (amountLeft == 0) {
+                _removeOffer(offerVerificationID);
+                isFulfilled = true;
+            }
         }
 
-        emit AcceptOffer(metaverseId, item, id, msg.sender, offerAmount, isFulfilled, offerVerificationID);
+        emit AcceptOffer(metaverseId, item, id, msg.sender, amount, isFulfilled, offerVerificationID);
     }
 
     //"cancel" functions with ownership
