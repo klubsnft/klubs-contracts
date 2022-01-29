@@ -4098,9 +4098,9 @@ describe("ItemStore", () => {
                     let vIDId = 0;
                     let re_draw = true;
                     let ExtendingAunction = false;
-                    const bn = await ethers.provider.getBlockNumber();
 
                     while (re_draw) {
+                        const bn = await ethers.provider.getBlockNumber();
                         user = Math.floor(Math.random() * 7);
                         vIDId = Math.floor(Math.random() * length);
                         re_draw = userAuctionInfo[user].vIDlist.includes(totalVIDs[vIDId]);
@@ -5010,9 +5010,9 @@ describe("ItemStore", () => {
                     let vIDId = 0;
                     let re_draw = true;
                     let ExtendingAunction = false;
-                    const bn = await ethers.provider.getBlockNumber();
 
                     while (re_draw) {
+                        const bn = await ethers.provider.getBlockNumber();
                         user = Math.floor(Math.random() * 7);
                         vIDId = Math.floor(Math.random() * length);
                         re_draw = userAuctionInfo[user].vIDlist.includes(totalVIDs[vIDId]);
