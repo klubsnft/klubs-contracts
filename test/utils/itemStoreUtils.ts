@@ -91,3 +91,28 @@ export function makeOfferVerificationID(offer: Offer, nonce: number) {
         ]
     );
 }
+export interface Auction {
+    seller: string;
+    metaverseId: number;
+    item: string;
+    id: number;
+    amount: number;
+    startTotalPrice: number;
+    endBlock: number;
+}
+
+export function makeAuctionVerificationID(auction: Auction, nonce: number) {
+    return solidityKeccak256(
+        ["address", "uint256", "address", "uint256", "uint256", "uint256", "uint256", "uint256"],
+        [
+            auction.seller,
+            auction.metaverseId,
+            auction.item,
+            auction.id,
+            auction.amount,
+            auction.startTotalPrice,
+            auction.endBlock,
+            nonce,
+        ]
+    );
+}
