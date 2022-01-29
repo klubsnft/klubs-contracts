@@ -3299,7 +3299,7 @@ describe("ItemStore", () => {
                 );
             });
 
-            it("should pass cancelSaleByOwner test", async function () {
+            it("should pass cancelOfferByOwner test", async function () {
                 const { deployer, alice, bob, carol, dan, mix, metaverses, mileage, itemStoreSale, Factory721 } =
                     await setupTest();
 
