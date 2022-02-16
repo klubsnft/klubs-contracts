@@ -335,6 +335,7 @@ interface IArtStore {
     function onSales(uint256 index) view external returns (uint256);
 
     function sell(uint256[] calldata ids, uint256[] calldata prices) external;
+    function changeSellPrice(uint256[] calldata ids, uint256[] calldata prices) external;
     function cancelSale(uint256[] calldata ids) external;
     function buy(uint256[] calldata ids, uint256[] calldata prices, uint256[] calldata mileages) external;
 
@@ -1928,7 +1929,7 @@ contract ArtStore is Ownable, IArtStore {
         uint256[] calldata prices,
         uint256[] calldata mileages
     ) external userWhitelist(msg.sender) {
-        require(ids.length == prices.length);
+        require(ids.length == prices.length && ids.length == mileages.length);
         for (uint256 i = 0; i < ids.length; i++) {
             Sale memory sale = sales[ids[i]];
             require(sale.seller != address(0) && sale.seller != msg.sender);
